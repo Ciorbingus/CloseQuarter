@@ -1,0 +1,12 @@
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/bin/Debug/net10.0/CloseQuarter.Shared.deps.json
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/bin/Debug/net10.0/CloseQuarter.Shared.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/bin/Debug/net10.0/CloseQuarter.Shared.pdb
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.csproj.AssemblyReference.cache
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.GeneratedMSBuildEditorConfig.editorconfig
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.AssemblyInfoInputs.cache
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.AssemblyInfo.cs
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.csproj.CoreCompileInputs.cache
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/refint/CloseQuarter.Shared.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.pdb
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/ref/CloseQuarter.Shared.dll

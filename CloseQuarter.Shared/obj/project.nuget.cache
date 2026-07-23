@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "D1sDUCi+Xu0=",
+  "success": true,
+  "projectFilePath": "/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/CloseQuarter.Shared.csproj",
+  "expectedPackageFiles": [
+    "/home/florian/.nuget/packages/litenetlib/2.1.4/litenetlib.2.1.4.nupkg.sha512"
+  ],
+  "logs": []
+}

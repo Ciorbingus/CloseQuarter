@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CloseQuarter.Client/CloseQuarter.Client.csproj" />
+  <Project Path="CloseQuarter.Server/CloseQuarter.Server.csproj" />
+  <Project Path="CloseQuarter.Shared/CloseQuarter.Shared.csproj" />
+</Solution>
