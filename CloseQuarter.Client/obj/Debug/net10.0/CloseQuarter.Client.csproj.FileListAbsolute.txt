@@ -42,3 +42,4 @@
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/CloseQuarter.Client.pdb
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/CloseQuarter.Client.genruntimeconfig.cache
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/ref/CloseQuarter.Client.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/CloseQuarter.Client.sourcelink.json

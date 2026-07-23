@@ -166,6 +166,22 @@
           }
         }
       },
+      "Silk.NET.OpenAL/2.23.0": {
+        "type": "package",
+        "dependencies": {
+          "Silk.NET.Core": "2.23.0"
+        },
+        "compile": {
+          "lib/net5.0/Silk.NET.OpenAL.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net5.0/Silk.NET.OpenAL.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Silk.NET.OpenGL/2.23.0": {
         "type": "package",
         "dependencies": {
@@ -504,6 +520,27 @@
         "silkdotnet_v3.png"
       ]
     },
+    "Silk.NET.OpenAL/2.23.0": {
+      "sha512": "O8EaDRWGOcKniZ2VxKD/xOmugzUJz747KpqGRw3cezDsz8nD66OZW217o1rT06cG76f8eYigy/yY6eRdhRqHHQ==",
+      "type": "package",
+      "path": "silk.net.openal/2.23.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net5.0/Silk.NET.OpenAL.dll",
+        "lib/net5.0/Silk.NET.OpenAL.xml",
+        "lib/netcoreapp3.1/Silk.NET.OpenAL.dll",
+        "lib/netcoreapp3.1/Silk.NET.OpenAL.xml",
+        "lib/netstandard2.0/Silk.NET.OpenAL.dll",
+        "lib/netstandard2.0/Silk.NET.OpenAL.xml",
+        "lib/netstandard2.1/Silk.NET.OpenAL.dll",
+        "lib/netstandard2.1/Silk.NET.OpenAL.xml",
+        "silk.net.openal.2.23.0.nupkg.sha512",
+        "silk.net.openal.nuspec",
+        "silkdotnet_v3.png"
+      ]
+    },
     "Silk.NET.OpenGL/2.23.0": {
       "sha512": "CIakUoUqiAyRPykMk54tr1M1XpbJrT/iw12T85HDQcuRCFlBa1cxbX7v3FmtznKO5eM89esfmGNCgqDaKBiWfg==",
       "type": "package",
@@ -625,6 +662,7 @@
       "ImGui.NET >= 1.91.6.1",
       "LiteNetLib >= 2.1.4",
       "Silk.NET.Input >= 2.23.0",
+      "Silk.NET.OpenAL >= 2.23.0",
       "Silk.NET.OpenGL >= 2.23.0",
       "Silk.NET.Windowing >= 2.23.0",
       "StbImageSharp >= 2.30.15"
@@ -686,6 +724,10 @@
             "version": "[2.1.4, )"
           },
           "Silk.NET.Input": {
+            "target": "Package",
+            "version": "[2.23.0, )"
+          },
+          "Silk.NET.OpenAL": {
             "target": "Package",
             "version": "[2.23.0, )"
           },

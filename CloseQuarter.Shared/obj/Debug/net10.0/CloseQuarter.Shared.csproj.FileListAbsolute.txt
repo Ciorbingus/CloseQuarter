@@ -10,3 +10,4 @@
 /home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/refint/CloseQuarter.Shared.dll
 /home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.pdb
 /home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/ref/CloseQuarter.Shared.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Shared/obj/Debug/net10.0/CloseQuarter.Shared.sourcelink.json

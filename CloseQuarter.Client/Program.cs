@@ -4,7 +4,7 @@ using Silk.NET.OpenGL;
 using Silk.NET.Input;
 using System.Drawing;
 
-namespace FightingGame.Client;
+namespace CloseQuarter.Client;
 
 class Program
 {
@@ -15,7 +15,7 @@ class Program
     {
         var options = WindowOptions.Default;
         options.Size = new Vector2D<int>(1280, 720);
-        options.Title = "3D Fighting Game - Client";
+        options.Title = "CloseQuarter - Client";
         options.VSync = true; 
 
         _window = Window.Create(options);
