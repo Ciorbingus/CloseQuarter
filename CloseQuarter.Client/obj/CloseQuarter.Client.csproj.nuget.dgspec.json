@@ -68,6 +68,10 @@
               "target": "Package",
               "version": "[2.23.0, )"
             },
+            "Silk.NET.OpenGL.Extensions.ImGui": {
+              "target": "Package",
+              "version": "[2.23.0, )"
+            },
             "Silk.NET.Windowing": {
               "target": "Package",
               "version": "[2.23.0, )"

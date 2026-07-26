@@ -12,7 +12,9 @@
           "ImGui.NET": "1.91.6.1",
           "LiteNetLib": "2.1.4",
           "Silk.NET.Input": "2.23.0",
+          "Silk.NET.OpenAL": "2.23.0",
           "Silk.NET.OpenGL": "2.23.0",
+          "Silk.NET.OpenGL.Extensions.ImGui": "2.23.0",
           "StbImageSharp": "2.30.15"
         },
         "runtime": {
@@ -119,6 +121,17 @@
           }
         }
       },
+      "Silk.NET.Input.Extensions/2.23.0": {
+        "dependencies": {
+          "Silk.NET.Input.Common": "2.23.0"
+        },
+        "runtime": {
+          "lib/net5.0/Silk.NET.Input.Extensions.dll": {
+            "assemblyVersion": "2.23.0.0",
+            "fileVersion": "2.23.0.0"
+          }
+        }
+      },
       "Silk.NET.Input.Glfw/2.23.0": {
         "dependencies": {
           "Silk.NET.Input.Common": "2.23.0",
@@ -139,6 +152,17 @@
           }
         }
       },
+      "Silk.NET.OpenAL/2.23.0": {
+        "dependencies": {
+          "Silk.NET.Core": "2.23.0"
+        },
+        "runtime": {
+          "lib/net5.0/Silk.NET.OpenAL.dll": {
+            "assemblyVersion": "2.23.0.0",
+            "fileVersion": "2.23.0.0"
+          }
+        }
+      },
       "Silk.NET.OpenGL/2.23.0": {
         "dependencies": {
           "Silk.NET.Core": "2.23.0",
@@ -146,6 +170,21 @@
         },
         "runtime": {
           "lib/net5.0/Silk.NET.OpenGL.dll": {
+            "assemblyVersion": "2.23.0.0",
+            "fileVersion": "2.23.0.0"
+          }
+        }
+      },
+      "Silk.NET.OpenGL.Extensions.ImGui/2.23.0": {
+        "dependencies": {
+          "ImGui.NET": "1.91.6.1",
+          "Silk.NET.Input.Common": "2.23.0",
+          "Silk.NET.Input.Extensions": "2.23.0",
+          "Silk.NET.OpenGL": "2.23.0",
+          "Silk.NET.Windowing.Common": "2.23.0"
+        },
+        "runtime": {
+          "lib/net5.0/Silk.NET.OpenGL.Extensions.ImGui.dll": {
             "assemblyVersion": "2.23.0.0",
             "fileVersion": "2.23.0.0"
           }
@@ -302,6 +341,13 @@
       "path": "silk.net.input.common/2.23.0",
       "hashPath": "silk.net.input.common.2.23.0.nupkg.sha512"
     },
+    "Silk.NET.Input.Extensions/2.23.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-STd3kiCwDUfmdQve+WGEla9jVaS/HSLfAxp/OjGY/asTWDvTSWDyPm+KrzLmN3JllBbuj/PcFssMjl4l93KFBA==",
+      "path": "silk.net.input.extensions/2.23.0",
+      "hashPath": "silk.net.input.extensions.2.23.0.nupkg.sha512"
+    },
     "Silk.NET.Input.Glfw/2.23.0": {
       "type": "package",
       "serviceable": true,
@@ -316,12 +362,26 @@
       "path": "silk.net.maths/2.23.0",
       "hashPath": "silk.net.maths.2.23.0.nupkg.sha512"
     },
+    "Silk.NET.OpenAL/2.23.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-O8EaDRWGOcKniZ2VxKD/xOmugzUJz747KpqGRw3cezDsz8nD66OZW217o1rT06cG76f8eYigy/yY6eRdhRqHHQ==",
+      "path": "silk.net.openal/2.23.0",
+      "hashPath": "silk.net.openal.2.23.0.nupkg.sha512"
+    },
     "Silk.NET.OpenGL/2.23.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-CIakUoUqiAyRPykMk54tr1M1XpbJrT/iw12T85HDQcuRCFlBa1cxbX7v3FmtznKO5eM89esfmGNCgqDaKBiWfg==",
       "path": "silk.net.opengl/2.23.0",
       "hashPath": "silk.net.opengl.2.23.0.nupkg.sha512"
+    },
+    "Silk.NET.OpenGL.Extensions.ImGui/2.23.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-FNAbT1NcwmRcN7eqqXTGm5au0jRa0uBqQSPr5mO7cfr8cCX/0IKvxY0C4PL3Sn6BDGncAdJHVIIQZr7bJzLouw==",
+      "path": "silk.net.opengl.extensions.imgui/2.23.0",
+      "hashPath": "silk.net.opengl.extensions.imgui.2.23.0.nupkg.sha512"
     },
     "Silk.NET.Windowing.Common/2.23.0": {
       "type": "package",

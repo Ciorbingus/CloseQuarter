@@ -43,3 +43,6 @@
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/CloseQuarter.Client.genruntimeconfig.cache
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/ref/CloseQuarter.Client.dll
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/obj/Debug/net10.0/CloseQuarter.Client.sourcelink.json
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Silk.NET.OpenAL.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Silk.NET.Input.Extensions.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Silk.NET.OpenGL.Extensions.ImGui.dll
