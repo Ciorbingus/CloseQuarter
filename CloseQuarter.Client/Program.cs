@@ -57,6 +57,8 @@ class Program
 
         ScreenManager.Initialize(_gl, _window);
         ScreenManager.ChangeScreen(new TestScreen());
+
+        AudioManager.Initialize();
     }
 
     private static void OnUpdate(double deltaTime)
@@ -88,5 +90,7 @@ class Program
         
         ImGuiController?.Dispose();
         _inputContext?.Dispose();
+
+        AudioManager.Shutdown();
     }
 }

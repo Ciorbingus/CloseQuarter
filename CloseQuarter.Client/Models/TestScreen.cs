@@ -4,6 +4,9 @@ using System.Drawing;
 using ImGuiNET;
 using System.Numerics;
 
+using CloseQuarter.Client.Managers;
+
+
 namespace CloseQuarter.Client.Models;
 
 public class TestScreen : Screen
@@ -11,6 +14,9 @@ public class TestScreen : Screen
     private float _p1Health = 100f;
     private float _p2Health = 85f;
     private float _timer = 90f;
+
+    private String _bgmFilePath = "CloseQuarter.Client/Audio/tekken.wav";
+    private bool _bgmStarted = false;
 
     private Vector4 timerColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -24,9 +30,19 @@ public class TestScreen : Screen
 
     public override void OnUpdate(double deltaTime)
     {
+       
+        if (!_bgmStarted)
+        {
+            AudioManager.PlayBGM(_bgmFilePath, 0.3f);
+            _bgmStarted = true;
+        }
+       
         _timer -= (float)deltaTime;
-        if (_timer < 0f) _timer = 0f;
-
+        if (_timer < 0f) 
+        {
+            _timer = 0f;
+            AudioManager.StopBGM();
+        }
     }
 
 
@@ -50,7 +66,9 @@ public class TestScreen : Screen
 
         if (ImGui.Button("Reset Timer"))
         {
-            _timer = 99f;
+            _timer = 90f;
+
+            AudioManager.PlayBGM(_bgmFilePath, 0.3f);
         }
 
         ImGui.End();
