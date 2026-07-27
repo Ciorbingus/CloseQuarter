@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CloseQuarter.Shared")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1c1d059b3a640858a4446335d4078208d9c8738f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+26cc3f3b3d258acc7bb918a63486c6a52fa67d59")]
 [assembly: System.Reflection.AssemblyProductAttribute("CloseQuarter.Shared")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CloseQuarter.Shared")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

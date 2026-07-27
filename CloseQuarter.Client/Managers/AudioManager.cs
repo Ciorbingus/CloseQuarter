@@ -1,5 +1,4 @@
 using Silk.NET.OpenAL;
-using System.Collections.Generic;
 
 namespace CloseQuarter.Client.Managers;
 

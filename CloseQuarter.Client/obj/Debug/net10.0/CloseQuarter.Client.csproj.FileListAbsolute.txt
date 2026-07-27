@@ -46,3 +46,8 @@
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Silk.NET.OpenAL.dll
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Silk.NET.Input.Extensions.dll
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Silk.NET.OpenGL.Extensions.ImGui.dll
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/ring.frag
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/ring.vert
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/background.frag
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/background.vert
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/sky.jpg

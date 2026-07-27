@@ -22,7 +22,7 @@ class Program
         {
             var options = WindowOptions.Default;
             options.Size = new Vector2D<int>(1280, 720);
-            options.Title = "Joc Boss Faraonic";
+            options.Title = "Demo";
             options.VSync = true;
             options.API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(3, 3));
 
@@ -34,7 +34,7 @@ class Program
             _window.FramebufferResize += OnResize;
             _window.Closing += OnClosing;
 
-            Console.WriteLine("[System] Starting Close Quarter Client...");
+            Console.WriteLine("[System] Starting Demo...");
             _window.Run();
         }
         catch (Exception ex)
@@ -56,7 +56,7 @@ class Program
         ImGuiController = new ImGuiController(_gl, _window, _inputContext);
 
         ScreenManager.Initialize(_gl, _window);
-        ScreenManager.ChangeScreen(new TestScreen());
+        ScreenManager.ChangeScreen(new MainMenuScreen());
 
         AudioManager.Initialize();
     }

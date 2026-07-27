@@ -4,104 +4,326 @@ using System.Drawing;
 using ImGuiNET;
 using System.Numerics;
 
+
 using CloseQuarter.Client.Managers;
+using CloseQuarter.Client.Graphics;
 
 
 namespace CloseQuarter.Client.Models;
 
 public class TestScreen : Screen
 {
-    private float _p1Health = 100f;
-    private float _p2Health = 85f;
+    private const float MaxHealth = 100f;
+
+    private float _p1Health = MaxHealth;
+    private float _p2Health = MaxHealth;
     private float _timer = 90f;
 
-    private String _bgmFilePath = "CloseQuarter.Client/Audio/tekken.wav";
+    private bool _bgmSoundOn = true;
+    private bool _isGameOver = false;
+
+
+    private string _backgroundTexturePath = "Textures/sky.jpg";
+
+    private string _bgmFilePath = "CloseQuarter.Client/Audio/tekken.wav";
+    private string _soundEffect = "CloseQuarter.Client/Audio/boom.wav";
     private bool _bgmStarted = false;
 
     private Vector4 timerColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 
 
+    private MyShader? _ringShader;
+    private Ring? _ring;
+
+
+
+    private Camera? _camera;
+
+
+    
+    private float _cameraSpeed = 5.0f; 
+    private float _cameraRotationSpeed = 30.0f;
+
+
+
+    private Background? _background;
+
+
     public override void OnLoad(GL gl, IWindow window)
     {
         base.OnLoad(gl, window);
-        Console.WriteLine("[TestScreen] Test screen has been loaded successfully.");
+        Console.WriteLine("[Debug] Test screen has been loaded successfully.");
+
+        try
+        {
+            _background = new Background(Gl);
+            _background.Initialize(_backgroundTexturePath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OpenGL Error] Failed to load background: {ex.Message}");
+        }
+
+        try
+        {
+            _ringShader = MyShader.FromFiles(Gl, "Shaders/ring.vert", "Shaders/ring.frag");
+            _ring = new Ring(Gl);
+            _ring.Initialize();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OpenGL Error] Failed to load 3D resources: {ex.Message}");
+        }
+
+        float aspectRatio = (float)Window.Size.X / Window.Size.Y;
+        _camera = new Camera(aspectRatio);
+
     }
 
-    public override void OnUpdate(double deltaTime)
+    private void GameOver()
     {
-       
-        if (!_bgmStarted)
+        if (_isGameOver || _timer <= 0f)
         {
-            AudioManager.PlayBGM(_bgmFilePath, 0.3f);
-            _bgmStarted = true;
-        }
-       
-        _timer -= (float)deltaTime;
-        if (_timer < 0f) 
-        {
-            _timer = 0f;
+            if (_timer <= 0f) _timer = 0f;
+            DrawGameOverUI();
             AudioManager.StopBGM();
         }
     }
 
+    private void DrawGameOverUI()
+    {
+        float windowWidth = Window.Size.X;
+        float windowHeight = Window.Size.Y;
 
-    private void updateUI()
+        Vector2 gameOverSize = new Vector2(400, 200);
+        Vector2 gameOverPos = new Vector2((windowWidth - gameOverSize.X) / 2f, (windowHeight - gameOverSize.Y) / 2f);
+
+        ImGui.SetNextWindowPos(gameOverPos);
+        ImGui.SetNextWindowSize(gameOverSize);
+
+        ImGui.Begin("Game Over", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize);
+
+        ImGui.SetWindowFontScale(1.6f);
+        string title = "GAME OVER";
+        float titleX = (ImGui.GetWindowWidth() - ImGui.CalcTextSize(title).X) / 2f;
+        ImGui.SetCursorPosX(titleX);
+        ImGui.TextColored(new Vector4(1.0f, 0.1f, 0.1f, 1.0f), title);
+        ImGui.SetWindowFontScale(1.0f);
+
+        ImGui.Spacing();
+
+        if (ImGui.Button("Return to Main Menu"))
+        {
+            ScreenManager.ChangeScreen(new MainMenuScreen());
+        }
+
+        ImGui.End();
+    }
+
+
+    private void GetInput(double deltaTime)
+    {
+
+        if (ImGui.IsKeyPressed(ImGuiKey.B))
+        {
+            if (_p2Health > 0f)
+            {
+                _p2Health -= 10f;
+                AudioManager.PlaySFX(_soundEffect, 0.3f);
+            }
+        }
+
+
+        float cameraSpeed = _cameraSpeed * (float)deltaTime; 
+
+        if (ImGui.IsKeyPressed(ImGuiKey.A))
+        {
+            _camera?.MoveRight(-cameraSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.D))
+        {
+            _camera?.MoveRight(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.W))
+        {
+            _camera?.MoveForward(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.S))
+        {
+            _camera?.MoveBackward(cameraSpeed);
+        }
+
+
+        if (ImGui.IsKeyPressed(ImGuiKey.R))
+        {
+            _camera?.MoveUp(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.F))
+        {
+            _camera?.MoveDown(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.Q))
+        {
+            _camera?.RotateAroundTarget(-_cameraRotationSpeed * (float)deltaTime);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.E))
+        {
+            _camera?.RotateAroundTarget(_cameraRotationSpeed * (float)deltaTime);
+        }
+    }
+
+    public override void OnUpdate(double deltaTime)
+    {
+        _isGameOver = (_p1Health <= 0f || _p2Health <= 0f || _timer <= 0f);
+
+        if (!_bgmStarted)
+        {
+            if (_bgmSoundOn)
+            {
+                AudioManager.PlayBGM(_bgmFilePath, 0.3f);
+            }
+            _bgmStarted = true;
+        }
+
+        if (!_isGameOver)
+        {
+            _timer -= (float)deltaTime;
+        }
+
+        if (_p1Health < 0f) _p1Health = 0f;
+        if (_p2Health < 0f) _p2Health = 0f;
+        if (_timer < 0f) _timer = 0f;
+
+        GameOver();
+
+
+         if (ImGui.IsKeyPressed(ImGuiKey.Escape))
+        {
+            ScreenManager.ChangeScreen(new MainMenuScreen());
+        }
+
+        if (!_isGameOver) GetInput(deltaTime);
+
+    }
+
+
+
+
+    private void DrawScene()
+    {
+
+        _background?.Render();
+
+        if (_ringShader == null || _ring == null || _camera == null) return;
+
+        Gl.Enable(EnableCap.DepthTest);
+
+        Matrix4x4 view = _camera.GetViewMatrix();
+        Matrix4x4 projection = _camera.GetProjectionMatrix();
+
+        _ring.Render(_ringShader, view, projection);
+    }
+
+
+
+
+    private void UpdateUI()
     {
         // Debug Window
         ImGui.Begin("Debug Engine");
         ImGui.Text($"FPS: {1.0 / ImGui.GetIO().DeltaTime:F0}");
         ImGui.Separator();
 
-        ImGui.Text("Health Bar:");
-        ImGui.SliderFloat("P1 Health", ref _p1Health, 0f, 100f);
-        ImGui.SliderFloat("P2 Health", ref _p2Health, 0f, 100f);
+        ImGui.Text($"Camera Position: X: {_camera?.Position.X:F2}, Y: {_camera?.Position.Y:F2}, Z: {_camera?.Position.Z:F2}");
 
+        ImGui.SliderFloat("P1 Health", ref _p1Health, 0f, MaxHealth);
+        ImGui.SliderFloat("P2 Health", ref _p2Health, 0f, MaxHealth);
 
         if (ImGui.Button("Reset Health"))
         {
-            _p1Health = 100f;
-            _p2Health = 100f;
+            _p1Health = MaxHealth;
+            _p2Health = MaxHealth;
         }
 
         if (ImGui.Button("Reset Timer"))
         {
             _timer = 90f;
-
-            AudioManager.PlayBGM(_bgmFilePath, 0.3f);
         }
 
-        ImGui.End();
+        if (ImGui.Button("Play SFX"))
+        {
+            AudioManager.PlaySFX(_soundEffect, 0.3f);
+        }
 
+        if (ImGui.Button("Reset Game"))
+        {
+            _p1Health = MaxHealth;
+            _p2Health = MaxHealth;
+            _timer = 90f;
+            _isGameOver = false;
+
+            if (_bgmSoundOn)
+            {
+                AudioManager.PlayBGM(_bgmFilePath, 0.3f);
+            }
+        }
+
+        if (ImGui.Button("Toggle BGM"))
+        {
+            _bgmSoundOn = !_bgmSoundOn;
+
+            if (_bgmSoundOn)
+                AudioManager.PlayBGM(_bgmFilePath, 0.3f);
+            else
+                AudioManager.StopBGM();
+        }
+
+        ImGui.SliderFloat("Camera Speed", ref _cameraSpeed, 0f, 50f);
+        ImGui.SliderFloat("Camera Rotation Speed", ref _cameraRotationSpeed, 0f, 100f);
+        if (ImGui.Button("Reset Camera"))
+        {
+            if (_camera != null)
+            {
+                float aspectRatio = (float)Window.Size.X / Window.Size.Y;
+                _camera = new Camera(aspectRatio);
+            }
+        }
+
+
+
+
+        ImGui.End();
 
         float windowWidth = Window.Size.X;
 
         // Player 1 HUD
-        ImGui.SetNextWindowPos(new System.Numerics.Vector2(20, 20));
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(400, 70));
+        ImGui.SetNextWindowPos(new Vector2(20, 20));
+        ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P1_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
-
-        ImGui.TextColored(new System.Numerics.Vector4(0.2f, 0.8f, 1.0f, 1.0f), "PLAYER 1");
+        ImGui.TextColored(new Vector4(0.2f, 0.8f, 1.0f, 1.0f), "PLAYER 1");
 
         if (_p1Health < 25f)
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(0.9f, 0.1f, 0.1f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
         else if (_p1Health < 50f)
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(0.9f, 0.8f, 0.1f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.8f, 0.1f, 1.0f));
         else
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(0.1f, 0.8f, 0.2f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.1f, 0.8f, 0.2f, 1.0f));
 
-        ImGui.ProgressBar(_p1Health / 100f, new System.Numerics.Vector2(350, 22), $"{_p1Health:F0} HP");
+        ImGui.ProgressBar(_p1Health / 100f, new Vector2(350, 22), $"{_p1Health:F0} HP");
         ImGui.PopStyleColor();
-
         ImGui.End();
 
-
-
-        // Timer
-        ImGui.SetNextWindowPos(new System.Numerics.Vector2((windowWidth / 2f) - 40, 15));
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(80, 60));
+        // Timer HUD
+        ImGui.SetNextWindowPos(new Vector2((windowWidth / 2f) - 40, 15));
+        ImGui.SetNextWindowSize(new Vector2(80, 60));
         ImGui.Begin("Timer_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
-
         ImGui.SetWindowFontScale(1.8f);
 
         if (_timer < 15f)
@@ -110,37 +332,33 @@ public class TestScreen : Screen
             timerColor = new Vector4(1.0f, 0.6f, 0.2f, 1.0f);
         else if (_timer < 75f)
             timerColor = new Vector4(1.0f, 0.9f, 0.2f, 1.0f);
-        else 
+        else
             timerColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
         ImGui.TextColored(timerColor, $"{_timer:F0}");
-
         ImGui.SetWindowFontScale(1.0f);
         ImGui.End();
 
-
-
         // Player 2 HUD
-        ImGui.SetNextWindowPos(new System.Numerics.Vector2(windowWidth - 420, 20));
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(400, 70));
+        ImGui.SetNextWindowPos(new Vector2(windowWidth - 420, 20));
+        ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P2_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
 
         string p2Label = "PLAYER 2";
         float posX = ImGui.GetWindowWidth() - ImGui.CalcTextSize(p2Label).X - 50;
         ImGui.SetCursorPosX(posX);
-        ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.3f, 0.3f, 1.0f), p2Label);
+        ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), p2Label);
 
         if (_p2Health < 25f)
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(0.9f, 0.1f, 0.1f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
         else if (_p2Health < 50f)
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(0.9f, 0.8f, 0.1f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.8f, 0.1f, 1.0f));
         else
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new System.Numerics.Vector4(0.1f, 0.8f, 0.2f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.1f, 0.8f, 0.2f, 1.0f));
 
         ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 350 - 50);
-        ImGui.ProgressBar(_p2Health / 100f, new System.Numerics.Vector2(350, 22), $"{_p2Health:F0} HP");
+        ImGui.ProgressBar(_p2Health / 100f, new Vector2(350, 22), $"{_p2Health:F0} HP");
         ImGui.PopStyleColor();
-
         ImGui.End();
     }
 
@@ -149,12 +367,26 @@ public class TestScreen : Screen
         Gl.ClearColor(Color.FromArgb(255, 25, 30, 45));
         Gl.Clear((uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
 
-        updateUI();
-        
+        DrawScene();
+        UpdateUI();
     }
+
+
+    public override void OnResize(Silk.NET.Maths.Vector2D<int> newSize)
+    {
+        base.OnResize(newSize);
+        if (newSize.Y > 0 && _camera != null)
+        {
+            _camera.UpdateAspectRatio((float)newSize.X / newSize.Y);
+        }
+    }
+
 
     public override void OnUnload()
     {
-        Console.WriteLine("[TestScreen] Resources have been released.");
+        _background?.Dispose(); 
+        _ring?.Dispose();
+        _ringShader?.Dispose();
+        Console.WriteLine("[Debug] 3D Resources and TestScreen released.");
     }
 }
