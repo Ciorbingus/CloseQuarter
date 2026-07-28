@@ -7,6 +7,7 @@ using System.Numerics;
 
 using CloseQuarter.Client.Managers;
 using CloseQuarter.Client.Graphics;
+using System.Runtime.CompilerServices;
 
 
 namespace CloseQuarter.Client.Models;
@@ -23,7 +24,7 @@ public class TestScreen : Screen
     private bool _isGameOver = false;
 
 
-    private string _backgroundTexturePath = "Textures/sky.jpg";
+    private string _backgroundTexturePath = "Textures/night.jpeg";
 
     private string _bgmFilePath = "CloseQuarter.Client/Audio/tekken.wav";
     private string _soundEffect = "CloseQuarter.Client/Audio/boom.wav";
@@ -36,16 +37,27 @@ public class TestScreen : Screen
     private MyShader? _ringShader;
     private Ring? _ring;
 
+    private MyTexture? _ringTexture;
+    private string _ringTexturePath = "Textures/sky.jpg";
 
 
     private Camera? _camera;
 
 
-    
-    private float _cameraSpeed = 5.0f; 
+
+    private float _cameraSpeed = 5.0f;
     private float _cameraRotationSpeed = 30.0f;
 
 
+    private Player? _player1;
+    private Player? _player2;
+    private MyShader? _playerShader;
+
+    private String _p1TexturePath = "Textures/player.png";
+    private String _p2TexturePath = "Textures/player2.png";
+
+    private String _faceTexturePath1 = "Textures/player_face.png";
+    private String _faceTexturePath2 = "Textures/player2_face.png";
 
     private Background? _background;
 
@@ -54,6 +66,8 @@ public class TestScreen : Screen
     {
         base.OnLoad(gl, window);
         Console.WriteLine("[Debug] Test screen has been loaded successfully.");
+
+        _ringTexture = new MyTexture(Gl, _ringTexturePath);
 
         try
         {
@@ -73,11 +87,52 @@ public class TestScreen : Screen
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[OpenGL Error] Failed to load 3D resources: {ex.Message}");
+            Console.WriteLine($"[OpenGL Error] Failed to load ring resources: {ex.Message}");
         }
 
         float aspectRatio = (float)Window.Size.X / Window.Size.Y;
         _camera = new Camera(aspectRatio);
+
+        try
+        {
+            _player1 = new Player(Gl);
+            _player1.LoadTextures(Gl, _p1TexturePath, _faceTexturePath1);
+            _playerShader = MyShader.FromFiles(Gl, "Shaders/player.vert", "Shaders/player.frag");
+
+            if (_player1 != null && _playerShader != null && _camera != null)
+            {
+                Matrix4x4 view = _camera.GetViewMatrix();
+                Matrix4x4 projection = _camera.GetProjectionMatrix();
+
+                _player1.Position = new Vector3(5.0f, 0.0f, 5.0f);
+
+                Console.WriteLine("[Debug] Player resources loaded successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OpenGL Error] Failed to load player1 resources: {ex.Message}");
+        }
+
+        try
+        {
+            _player2 = new Player(Gl);
+            _player2.LoadTextures(Gl, _p2TexturePath, _faceTexturePath2);
+
+            if (_player2 != null && _playerShader != null && _camera != null)
+            {
+                Matrix4x4 view = _camera.GetViewMatrix();
+                Matrix4x4 projection = _camera.GetProjectionMatrix();
+
+                _player2.Position = new Vector3(-5.0f, 0.0f, -5.0f);
+
+                Console.WriteLine("[Debug] Player 2 resources loaded successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OpenGL Error] Failed to load player2 resources: {ex.Message}");
+        }
 
     }
 
@@ -135,7 +190,7 @@ public class TestScreen : Screen
         }
 
 
-        float cameraSpeed = _cameraSpeed * (float)deltaTime; 
+        float cameraSpeed = _cameraSpeed * (float)deltaTime;
 
         if (ImGui.IsKeyPressed(ImGuiKey.A))
         {
@@ -177,6 +232,44 @@ public class TestScreen : Screen
         {
             _camera?.RotateAroundTarget(_cameraRotationSpeed * (float)deltaTime);
         }
+
+
+
+
+        float playerSpeed = 30.0f * (float)deltaTime;
+        float rotationSpeed = 1.5f * (float)deltaTime;
+
+        if (ImGui.IsKeyPressed(ImGuiKey.UpArrow))
+        {
+            _player1?.MoveForward(playerSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.DownArrow))
+        {
+            _player1?.MoveBackward(playerSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.LeftArrow))
+        {
+            _player1?.MoveLeft(playerSpeed);
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.RightArrow))
+        {
+            _player1?.MoveRight(playerSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.U))
+        {
+            _player1?.Rotate(-rotationSpeed, 0f);
+        }
+        if (ImGui.IsKeyDown(ImGuiKey.O))
+        {
+            _player1?.Rotate(rotationSpeed, 0f);
+        }
+
+
+
     }
 
     public override void OnUpdate(double deltaTime)
@@ -204,7 +297,7 @@ public class TestScreen : Screen
         GameOver();
 
 
-         if (ImGui.IsKeyPressed(ImGuiKey.Escape))
+        if (ImGui.IsKeyPressed(ImGuiKey.Escape))
         {
             ScreenManager.ChangeScreen(new MainMenuScreen());
         }
@@ -222,6 +315,7 @@ public class TestScreen : Screen
         _background?.Render();
 
         if (_ringShader == null || _ring == null || _camera == null) return;
+        _ringTexture?.Bind(TextureUnit.Texture0);
 
         Gl.Enable(EnableCap.DepthTest);
 
@@ -229,8 +323,17 @@ public class TestScreen : Screen
         Matrix4x4 projection = _camera.GetProjectionMatrix();
 
         _ring.Render(_ringShader, view, projection);
-    }
 
+        if (_player1 != null && _playerShader != null)
+        {
+            _player1.Render(_playerShader, view, projection);
+        }
+
+        if (_player2 != null && _playerShader != null)
+        {
+            _player2.Render(_playerShader, view, projection);
+        }
+    }
 
 
 
@@ -285,8 +388,8 @@ public class TestScreen : Screen
                 AudioManager.StopBGM();
         }
 
-        ImGui.SliderFloat("Camera Speed", ref _cameraSpeed, 0f, 50f);
-        ImGui.SliderFloat("Camera Rotation Speed", ref _cameraRotationSpeed, 0f, 100f);
+        ImGui.SliderFloat("Camera Speed", ref _cameraSpeed, 0f, 100f);
+        ImGui.SliderFloat("Camera Rotation Speed", ref _cameraRotationSpeed, 0f, 15000f);
         if (ImGui.Button("Reset Camera"))
         {
             if (_camera != null)
@@ -297,7 +400,8 @@ public class TestScreen : Screen
         }
 
 
-
+        ImGui.Text($"Player 1 Position: X: {_player1?.Position.X:F2}, Y: {_player1?.Position.Y:F2}, Z: {_player1?.Position.Z:F2}");
+        ImGui.Text($"Player 2 Position: X: {_player2?.Position.X:F2}, Y: {_player2?.Position.Y:F2}, Z: {_player2?.Position.Z:F2}");
 
         ImGui.End();
 
@@ -312,6 +416,8 @@ public class TestScreen : Screen
         if (_p1Health < 25f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
         else if (_p1Health < 50f)
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.6f, 0.2f, 1.0f));
+        else if (_p1Health < 75f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.8f, 0.1f, 1.0f));
         else
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.1f, 0.8f, 0.2f, 1.0f));
@@ -352,6 +458,8 @@ public class TestScreen : Screen
         if (_p2Health < 25f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
         else if (_p2Health < 50f)
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.6f, 0.2f, 1.0f));
+        else if (_p2Health < 75f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.8f, 0.1f, 1.0f));
         else
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.1f, 0.8f, 0.2f, 1.0f));
@@ -384,7 +492,7 @@ public class TestScreen : Screen
 
     public override void OnUnload()
     {
-        _background?.Dispose(); 
+        _background?.Dispose();
         _ring?.Dispose();
         _ringShader?.Dispose();
         Console.WriteLine("[Debug] 3D Resources and TestScreen released.");

@@ -3,14 +3,12 @@ using System.Numerics;
 
 namespace CloseQuarter.Client.Models;
 
-public class Ring : GameObject
+public class Cube : GameObject
 {
-    public Ring(GL gl) : base(gl)
+    public Cube(GL gl, float width = 1.0f, float height = 1.0f, float depth = 1.0f) : base(gl)
     {
-        Scale = new Vector3(12.0f, 1.5f, 8.0f);
-        Position = new Vector3(0.0f, -1.0f, 0.0f);
-
-        Initialize(); 
+        Scale = new Vector3(width, height, depth);
+        Initialize();
     }
 
     protected override (float[] vertices, uint[] indices) GetMeshData()

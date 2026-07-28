@@ -8,14 +8,14 @@ namespace CloseQuarter.Client.Models;
 public abstract class GameObject : IDisposable
 {
     protected readonly GL Gl;
-    
+
     protected uint Vao;
     protected uint Vbo;
     protected uint Ebo;
     protected uint IndexCount;
 
     public Vector3 Position { get; set; } = Vector3.Zero;
-    public Vector3 Rotation { get; set; } = Vector3.Zero; 
+    public Vector3 Rotation { get; set; } = Vector3.Zero;
     public Vector3 Scale { get; set; } = Vector3.One;
 
     protected GameObject(GL gl)
@@ -48,11 +48,12 @@ public abstract class GameObject : IDisposable
             Gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(indices.Length * sizeof(uint)), ptr, BufferUsageARB.StaticDraw);
         }
 
-        uint stride = 6 * sizeof(float);
+        uint stride = 5 * sizeof(float);
+
         Gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
         Gl.EnableVertexAttribArray(0);
 
-        Gl.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+        Gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
         Gl.EnableVertexAttribArray(1);
 
         Gl.BindVertexArray(0);
@@ -67,12 +68,19 @@ public abstract class GameObject : IDisposable
                Matrix4x4.CreateTranslation(Position);
     }
 
+
+
     public virtual void Render(MyShader shader, Matrix4x4 view, Matrix4x4 projection)
+    {
+        Render(shader, view, projection, GetModelMatrix());
+    }
+
+    public virtual void Render(MyShader shader, Matrix4x4 view, Matrix4x4 projection, Matrix4x4 customModelMatrix)
     {
         if (Vao == 0) return;
 
         shader.Use();
-        shader.SetUniform("uModel", GetModelMatrix());
+        shader.SetUniform("uModel", customModelMatrix);
         shader.SetUniform("uView", view);
         shader.SetUniform("uProjection", projection);
 
@@ -83,6 +91,7 @@ public abstract class GameObject : IDisposable
         }
         Gl.BindVertexArray(0);
     }
+
 
     public virtual void Dispose()
     {

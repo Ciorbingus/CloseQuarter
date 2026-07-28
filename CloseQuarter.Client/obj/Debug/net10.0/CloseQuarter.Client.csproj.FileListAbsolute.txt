@@ -51,3 +51,13 @@
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/background.frag
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/background.vert
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/sky.jpg
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/sky.jpeg
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/wooden.png
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/cheese.png
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/night.jpeg
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/player.frag
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Shaders/player.vert
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/player.png
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/player_face.png
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/player2.png
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/player2_face.png
