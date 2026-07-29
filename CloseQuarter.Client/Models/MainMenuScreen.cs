@@ -80,6 +80,15 @@ public class MainMenuScreen : Screen
         ImGui.Button("Play", buttonSize);
         ImGui.EndDisabled();
 
+
+        ImGui.Spacing();
+        ImGui.SetCursorPosX(20);
+
+        if (ImGui.Button("Model Editor", buttonSize))
+        {
+            ScreenManager.ChangeScreen(new ModelEditorScreen());
+        }
+
         ImGui.Spacing();
         ImGui.SetCursorPosX(20);
 

@@ -7,7 +7,6 @@ using System.Numerics;
 
 using CloseQuarter.Client.Managers;
 using CloseQuarter.Client.Graphics;
-using System.Runtime.CompilerServices;
 
 
 namespace CloseQuarter.Client.Models;
@@ -59,6 +58,14 @@ public class TestScreen : Screen
     private String _faceTexturePath1 = "Textures/player_face.png";
     private String _faceTexturePath2 = "Textures/player2_face.png";
 
+
+    private Vector3 _player1Position = new Vector3(-4.5f, 0.0f, 2.5f);
+    private Vector3 _player2Position = new Vector3(4.5f, 0.0f, 2.5f);
+
+    private Vector3 _player1Rotation = new Vector3(0.0f, MathF.PI / 2.0f, 0.0f); 
+    private Vector3 _player2Rotation = new Vector3(0.0f, -MathF.PI / 2.0f, 0.0f); 
+
+
     private Background? _background;
 
 
@@ -104,7 +111,8 @@ public class TestScreen : Screen
                 Matrix4x4 view = _camera.GetViewMatrix();
                 Matrix4x4 projection = _camera.GetProjectionMatrix();
 
-                _player1.Position = new Vector3(5.0f, 0.0f, 5.0f);
+                _player1.Position = _player1Position;
+                _player1.Rotation = _player1Rotation;
 
                 Console.WriteLine("[Debug] Player resources loaded successfully.");
             }
@@ -124,7 +132,8 @@ public class TestScreen : Screen
                 Matrix4x4 view = _camera.GetViewMatrix();
                 Matrix4x4 projection = _camera.GetProjectionMatrix();
 
-                _player2.Position = new Vector3(-5.0f, 0.0f, -5.0f);
+                _player2.Position = _player2Position;
+                _player2.Rotation = _player2Rotation;
 
                 Console.WriteLine("[Debug] Player 2 resources loaded successfully.");
             }
@@ -171,6 +180,11 @@ public class TestScreen : Screen
         if (ImGui.Button("Return to Main Menu"))
         {
             ScreenManager.ChangeScreen(new MainMenuScreen());
+        }
+
+        if (ImGui.Button("Restart Game"))
+        {
+            ResetGame();
         }
 
         ImGui.End();
@@ -336,6 +350,26 @@ public class TestScreen : Screen
     }
 
 
+    private void ResetGame()
+    {
+        _p1Health = MaxHealth;
+        _p2Health = MaxHealth;
+        _timer = 90f;
+        _isGameOver = false;
+
+        if (_bgmSoundOn)
+        {
+            AudioManager.PlayBGM(_bgmFilePath, 0.3f);
+        }
+
+        _player1?.Position = _player1Position;
+        _player2?.Position = _player2Position;
+        _player1?.Rotation = _player1Rotation;
+        _player2?.Rotation = _player2Rotation;
+
+
+        _camera?.Position = new Vector3(0.0f, 5.0f, 15.0f);
+    }
 
     private void UpdateUI()
     {
@@ -367,15 +401,7 @@ public class TestScreen : Screen
 
         if (ImGui.Button("Reset Game"))
         {
-            _p1Health = MaxHealth;
-            _p2Health = MaxHealth;
-            _timer = 90f;
-            _isGameOver = false;
-
-            if (_bgmSoundOn)
-            {
-                AudioManager.PlayBGM(_bgmFilePath, 0.3f);
-            }
+            ResetGame();
         }
 
         if (ImGui.Button("Toggle BGM"))

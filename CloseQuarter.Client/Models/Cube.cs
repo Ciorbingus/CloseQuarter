@@ -5,45 +5,54 @@ namespace CloseQuarter.Client.Models;
 
 public class Cube : GameObject
 {
-    public Cube(GL gl, float width = 1.0f, float height = 1.0f, float depth = 1.0f) : base(gl)
+    private readonly bool _onlyFrontTexture;
+
+    public Cube(GL gl, float width = 1.0f, float height = 1.0f, float depth = 1.0f, bool onlyFrontTexture = false) : base(gl)
     {
+        _onlyFrontTexture = onlyFrontTexture;
         Scale = new Vector3(width, height, depth);
         Initialize();
     }
 
     protected override (float[] vertices, uint[] indices) GetMeshData()
     {
+        float uMin = 0.0f, uMax = 1.0f;
+        float vMin = 0.0f, vMax = 1.0f;
+
+        float defaultU = 0.0f;
+        float defaultV = 0.0f;
+
         float[] vertices = new float[]
         {
-            -0.5f,  0.5f, -0.5f,     0.0f, 1.0f,
-             0.5f,  0.5f, -0.5f,     1.0f, 1.0f,
-             0.5f,  0.5f,  0.5f,     1.0f, 0.0f,
-            -0.5f,  0.5f,  0.5f,     0.0f, 0.0f,
+            -0.5f,  0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMax,
+             0.5f,  0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMax,
+             0.5f,  0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMin,
+            -0.5f,  0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMin,
 
-            -0.5f, -0.5f, -0.5f,     0.0f, 1.0f,
-             0.5f, -0.5f, -0.5f,     1.0f, 1.0f,
-             0.5f, -0.5f,  0.5f,     1.0f, 0.0f,
-            -0.5f, -0.5f,  0.5f,     0.0f, 0.0f,
+            -0.5f, -0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMax,
+             0.5f, -0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMax,
+             0.5f, -0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMin,
+            -0.5f, -0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMin,
 
-            -0.5f, -0.5f,  0.5f,     0.0f, 0.0f,
-             0.5f, -0.5f,  0.5f,     1.0f, 0.0f,
-             0.5f,  0.5f,  0.5f,     1.0f, 1.0f,
-            -0.5f,  0.5f,  0.5f,     0.0f, 1.0f,
+            -0.5f, -0.5f,  0.5f,     uMin, vMin,
+             0.5f, -0.5f,  0.5f,     uMax, vMin,
+             0.5f,  0.5f,  0.5f,     uMax, vMax,
+            -0.5f,  0.5f,  0.5f,     uMin, vMax,
 
-            -0.5f, -0.5f, -0.5f,     1.0f, 0.0f,
-             0.5f, -0.5f, -0.5f,     0.0f, 0.0f,
-             0.5f,  0.5f, -0.5f,     0.0f, 1.0f,
-            -0.5f,  0.5f, -0.5f,     1.0f, 1.0f,
+            -0.5f, -0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMin,
+             0.5f, -0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMin,
+             0.5f,  0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMax,
+            -0.5f,  0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMax,
 
-            -0.5f, -0.5f, -0.5f,     0.0f, 0.0f,
-            -0.5f, -0.5f,  0.5f,     1.0f, 0.0f,
-            -0.5f,  0.5f,  0.5f,     1.0f, 1.0f,
-            -0.5f,  0.5f, -0.5f,     0.0f, 1.0f,
+            -0.5f, -0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMin,
+            -0.5f, -0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMin,
+            -0.5f,  0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMax,
+            -0.5f,  0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMax,
 
-             0.5f, -0.5f, -0.5f,     1.0f, 0.0f,
-             0.5f, -0.5f,  0.5f,     0.0f, 0.0f,
-             0.5f,  0.5f,  0.5f,     0.0f, 1.0f,
-             0.5f,  0.5f, -0.5f,     1.0f, 1.0f,
+             0.5f, -0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMin,
+             0.5f, -0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMin,
+             0.5f,  0.5f,  0.5f,     _onlyFrontTexture ? defaultU : uMin, _onlyFrontTexture ? defaultV : vMax,
+             0.5f,  0.5f, -0.5f,     _onlyFrontTexture ? defaultU : uMax, _onlyFrontTexture ? defaultV : vMax,
         };
 
         uint[] indices = new uint[]
