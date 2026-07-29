@@ -1,11 +1,8 @@
 
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
-using System.Drawing;
-using ImGuiNET;
 
-
-namespace CloseQuarter.Client.Models;
+namespace CloseQuarter.Client.Screens;
 
 public abstract class Screen
 {

@@ -5,8 +5,9 @@ using System.Numerics;
 using ImGuiNET;
 
 using CloseQuarter.Client.Graphics;
+using CloseQuarter.Client.Models;
 
-namespace CloseQuarter.Client.Models;
+namespace CloseQuarter.Client.Screens;
 
 public class EditorCube
 {
@@ -132,12 +133,12 @@ public class ModelEditorScreen : Screen
 
             Matrix4x4 finalMatrix = localMatrix * modelRootMatrix;
 
-            _shader.Use();
-            _shader.SetUniform("uModel", finalMatrix);
-            _shader.SetUniform("uView", view);
-            _shader.SetUniform("uProjection", projection);
+            _shader?.Use();
+            _shader?.SetUniform("uModel", finalMatrix);
+            _shader?.SetUniform("uView", view);
+            _shader?.SetUniform("uProjection", projection);
 
-            cube.CubeMesh.Render(_shader, view, projection, finalMatrix);
+            if (_shader != null) cube.CubeMesh.Render(_shader, view, projection, finalMatrix);
         }
     }
 

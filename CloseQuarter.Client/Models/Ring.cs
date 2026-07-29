@@ -3,61 +3,121 @@ using System.Numerics;
 
 namespace CloseQuarter.Client.Models;
 
-public class Ring : GameObject
+public class Ring : IDisposable
 {
-    public Ring(GL gl) : base(gl)
-    {
-        Scale = new Vector3(12.0f, 1.5f, 8.0f);
-        Position = new Vector3(0.0f, -1.0f, 0.0f);
+    private readonly GL _gl;
+    private uint _vao;
+    private uint _vbo;
+    private uint _ebo;
+    private int _indexCount;
 
-        Initialize(); 
+    public Ring(GL gl)
+    {
+        _gl = gl;
     }
 
-    protected override (float[] vertices, uint[] indices) GetMeshData()
+    public void Initialize(float radius = 7.0f, int segments = 64)
     {
-        float[] vertices = new float[]
+        List<float> vertices = new List<float>();
+        List<uint> indices = new List<uint>();
+
+        vertices.Add(0.0f);
+        vertices.Add(0.01f);
+        vertices.Add(0.0f);
+        vertices.Add(0.5f);  
+        vertices.Add(0.5f);
+
+        for (int i = 0; i < segments; i++)
         {
-            -0.5f,  0.5f, -0.5f,     0.0f, 1.0f,
-             0.5f,  0.5f, -0.5f,     1.0f, 1.0f,
-             0.5f,  0.5f,  0.5f,     1.0f, 0.0f,
-            -0.5f,  0.5f,  0.5f,     0.0f, 0.0f,
+            float angle = (float)i / segments * MathF.PI * 2.0f;
+            float cos = MathF.Cos(angle);
+            float sin = MathF.Sin(angle);
 
-            -0.5f, -0.5f, -0.5f,     0.0f, 1.0f,
-             0.5f, -0.5f, -0.5f,     1.0f, 1.0f,
-             0.5f, -0.5f,  0.5f,     1.0f, 0.0f,
-            -0.5f, -0.5f,  0.5f,     0.0f, 0.0f,
+            float x = cos * radius;
+            float z = sin * radius;
 
-            -0.5f, -0.5f,  0.5f,     0.0f, 0.0f,
-             0.5f, -0.5f,  0.5f,     1.0f, 0.0f,
-             0.5f,  0.5f,  0.5f,     1.0f, 1.0f,
-            -0.5f,  0.5f,  0.5f,     0.0f, 1.0f,
+            float u = (cos + 1.0f) * 0.5f;
+            float v = (sin + 1.0f) * 0.5f;
 
-            -0.5f, -0.5f, -0.5f,     1.0f, 0.0f,
-             0.5f, -0.5f, -0.5f,     0.0f, 0.0f,
-             0.5f,  0.5f, -0.5f,     0.0f, 1.0f,
-            -0.5f,  0.5f, -0.5f,     1.0f, 1.0f,
+            vertices.Add(x);
+            vertices.Add(0.01f);
+            vertices.Add(z);
+            vertices.Add(u);
+            vertices.Add(v);
+        }
 
-            -0.5f, -0.5f, -0.5f,     0.0f, 0.0f,
-            -0.5f, -0.5f,  0.5f,     1.0f, 0.0f,
-            -0.5f,  0.5f,  0.5f,     1.0f, 1.0f,
-            -0.5f,  0.5f, -0.5f,     0.0f, 1.0f,
-
-             0.5f, -0.5f, -0.5f,     1.0f, 0.0f,
-             0.5f, -0.5f,  0.5f,     0.0f, 0.0f,
-             0.5f,  0.5f,  0.5f,     0.0f, 1.0f,
-             0.5f,  0.5f, -0.5f,     1.0f, 1.0f,
-        };
-
-        uint[] indices = new uint[]
+        for (uint i = 1; i <= segments; i++)
         {
-            0, 1, 2,  2, 3, 0,    
-            4, 5, 6,  6, 7, 4,    
-            8, 9, 10, 10, 11, 8, 
-            12, 13, 14, 14, 15, 12,
-            16, 17, 18, 18, 19, 16,
-            20, 21, 22, 22, 23, 20 
-        };
+            uint nextIndex = (i == segments) ? 1 : i + 1;
 
-        return (vertices, indices);
+            indices.Add(0);        
+            indices.Add(nextIndex); 
+            indices.Add(i);         
+        }
+
+        _indexCount = indices.Count;
+
+        _vao = _gl.GenVertexArray();
+        _vbo = _gl.GenBuffer();
+        _ebo = _gl.GenBuffer();
+
+        _gl.BindVertexArray(_vao);
+
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
+        unsafe
+        {
+            fixed (float* v = vertices.ToArray())
+            {
+                _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(vertices.Count * sizeof(float)), v, GLEnum.StaticDraw);
+            }
+        }
+
+        _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
+        unsafe
+        {
+            fixed (uint* idx = indices.ToArray())
+            {
+                _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(indices.Count * sizeof(uint)), idx, GLEnum.StaticDraw);
+            }
+        }
+
+        _gl.EnableVertexAttribArray(0);
+        unsafe
+        {
+            _gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), (void*)0);
+        }
+
+        _gl.EnableVertexAttribArray(1);
+        unsafe
+        {
+            _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        }
+
+        _gl.BindVertexArray(0);
+    }
+
+    public void Render(Graphics.MyShader shader, Matrix4x4 view, Matrix4x4 projection)
+    {
+        shader.Use();
+
+        Matrix4x4 model = Matrix4x4.Identity;
+
+        shader.SetUniform("uModel", model);
+        shader.SetUniform("uView", view);
+        shader.SetUniform("uProjection", projection);
+
+        _gl.BindVertexArray(_vao);
+        unsafe
+        {
+            _gl.DrawElements(PrimitiveType.Triangles, (uint)_indexCount, DrawElementsType.UnsignedInt, (void*)0);
+        }
+        _gl.BindVertexArray(0);
+    }
+
+    public void Dispose()
+    {
+        _gl.DeleteVertexArray(_vao);
+        _gl.DeleteBuffer(_vbo);
+        _gl.DeleteBuffer(_ebo);
     }
 }

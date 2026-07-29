@@ -22,6 +22,13 @@ public class Player : IDisposable
     public Vector3 RightArmRotation { get; set; } = Vector3.Zero;
     public Vector3 LeftLegRotation { get; set; } = Vector3.Zero;
 
+
+
+    public float VelocityY { get; set; } = 0.0f;
+    public bool IsGrounded { get; set; } = true;
+
+
+
     public Player(GL gl)
     {
         _torso = new Cube(gl, 0.60f, 1.10f, 0.25f, onlyFrontTexture: false);
@@ -156,4 +163,14 @@ public class Player : IDisposable
 
         Rotation = currentRotation;
     }
+
+    public void Jump(float jumpForce = 8.0f)
+    {
+        if (IsGrounded)
+        {
+            VelocityY = jumpForce;
+            IsGrounded = false;
+        }
+    }
+
 }

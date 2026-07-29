@@ -7,7 +7,7 @@ using System.Numerics;
 
 using CloseQuarter.Client.Managers;
 
-namespace CloseQuarter.Client.Models;
+namespace CloseQuarter.Client.Screens;
 
 public class MainMenuScreen : Screen
 {

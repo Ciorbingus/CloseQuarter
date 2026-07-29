@@ -7,9 +7,11 @@ using System.Numerics;
 
 using CloseQuarter.Client.Managers;
 using CloseQuarter.Client.Graphics;
+using CloseQuarter.Client.Models;
+using CloseQuarter.Client.Maps;
 
 
-namespace CloseQuarter.Client.Models;
+namespace CloseQuarter.Client.Screens;
 
 public class TestScreen : Screen
 {
@@ -53,7 +55,7 @@ public class TestScreen : Screen
     private MyShader? _playerShader;
 
     private String _p1TexturePath = "Textures/player.png";
-    private String _p2TexturePath = "Textures/player2.png";
+    private String _p2TexturePath = "Textures/player.png";
 
     private String _faceTexturePath1 = "Textures/player_face.png";
     private String _faceTexturePath2 = "Textures/player2_face.png";
@@ -62,11 +64,17 @@ public class TestScreen : Screen
     private Vector3 _player1Position = new Vector3(-4.5f, 0.0f, 2.5f);
     private Vector3 _player2Position = new Vector3(4.5f, 0.0f, 2.5f);
 
-    private Vector3 _player1Rotation = new Vector3(0.0f, MathF.PI / 2.0f, 0.0f); 
-    private Vector3 _player2Rotation = new Vector3(0.0f, -MathF.PI / 2.0f, 0.0f); 
+    private Vector3 _player1Rotation = new Vector3(0.0f, MathF.PI / 2.0f, 0.0f);
+    private Vector3 _player2Rotation = new Vector3(0.0f, -MathF.PI / 2.0f, 0.0f);
 
+
+    private GameMap? _currentMap;
 
     private Background? _background;
+
+
+    private bool _showHitboxes = true;
+    private DebugRenderer? _debugRenderer;
 
 
     public override void OnLoad(GL gl, IWindow window)
@@ -74,28 +82,9 @@ public class TestScreen : Screen
         base.OnLoad(gl, window);
         Console.WriteLine("[Debug] Test screen has been loaded successfully.");
 
-        _ringTexture = new MyTexture(Gl, _ringTexturePath);
 
-        try
-        {
-            _background = new Background(Gl);
-            _background.Initialize(_backgroundTexturePath);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[OpenGL Error] Failed to load background: {ex.Message}");
-        }
-
-        try
-        {
-            _ringShader = MyShader.FromFiles(Gl, "Shaders/ring.vert", "Shaders/ring.frag");
-            _ring = new Ring(Gl);
-            _ring.Initialize();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[OpenGL Error] Failed to load ring resources: {ex.Message}");
-        }
+        _currentMap = new TestMap(Gl);
+        _currentMap.LoadResources();
 
         float aspectRatio = (float)Window.Size.X / Window.Size.Y;
         _camera = new Camera(aspectRatio);
@@ -141,6 +130,16 @@ public class TestScreen : Screen
         catch (Exception ex)
         {
             Console.WriteLine($"[OpenGL Error] Failed to load player2 resources: {ex.Message}");
+        }
+
+        try
+        {
+            _debugRenderer = new DebugRenderer(Gl, segments: 32);
+            Console.WriteLine("[Debug] DebugRenderer initialized successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OpenGL Error] Failed to initialize DebugRenderer: {ex.Message}");
         }
 
     }
@@ -206,80 +205,79 @@ public class TestScreen : Screen
 
         float cameraSpeed = _cameraSpeed * (float)deltaTime;
 
-        if (ImGui.IsKeyPressed(ImGuiKey.A))
+        if (ImGui.IsKeyDown(ImGuiKey.A))
         {
             _camera?.MoveRight(-cameraSpeed);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.D))
+        if (ImGui.IsKeyDown(ImGuiKey.D))
         {
             _camera?.MoveRight(cameraSpeed);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.W))
+        if (ImGui.IsKeyDown(ImGuiKey.W))
         {
             _camera?.MoveForward(cameraSpeed);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.S))
+        if (ImGui.IsKeyDown(ImGuiKey.S))
         {
             _camera?.MoveBackward(cameraSpeed);
         }
 
 
-        if (ImGui.IsKeyPressed(ImGuiKey.R))
+        if (ImGui.IsKeyDown(ImGuiKey.R))
         {
             _camera?.MoveUp(cameraSpeed);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.F))
+        if (ImGui.IsKeyDown(ImGuiKey.F))
         {
             _camera?.MoveDown(cameraSpeed);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.Q))
+        if (ImGui.IsKeyDown(ImGuiKey.Q))
         {
             _camera?.RotateAroundTarget(-_cameraRotationSpeed * (float)deltaTime);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.E))
+        if (ImGui.IsKeyDown(ImGuiKey.E))
         {
             _camera?.RotateAroundTarget(_cameraRotationSpeed * (float)deltaTime);
         }
 
 
-
-
-        float playerSpeed = 30.0f * (float)deltaTime;
+        float playerSpeed = 1.0f * (float)deltaTime;
         float rotationSpeed = 1.5f * (float)deltaTime;
 
-        if (ImGui.IsKeyPressed(ImGuiKey.UpArrow))
+
+        if (ImGui.IsKeyDown(ImGuiKey.LeftShift))
         {
-            _player1?.MoveForward(playerSpeed);
+            playerSpeed *= 3.0f;
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.DownArrow))
+        if (ImGui.IsKeyDown(ImGuiKey.LeftArrow))
         {
             _player1?.MoveBackward(playerSpeed);
         }
 
-        if (ImGui.IsKeyPressed(ImGuiKey.LeftArrow))
+        if (ImGui.IsKeyDown(ImGuiKey.RightArrow))
         {
-            _player1?.MoveLeft(playerSpeed);
-        }
-
-        if (ImGui.IsKeyPressed(ImGuiKey.RightArrow))
-        {
-            _player1?.MoveRight(playerSpeed);
+            _player1?.MoveForward(playerSpeed);
         }
 
         if (ImGui.IsKeyDown(ImGuiKey.U))
         {
-            _player1?.Rotate(-rotationSpeed, 0f);
+            _player1?.Rotate(rotationSpeed, 0f);
         }
         if (ImGui.IsKeyDown(ImGuiKey.O))
         {
-            _player1?.Rotate(rotationSpeed, 0f);
+            _player1?.Rotate(-rotationSpeed, 0f);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.UpArrow))
+        {
+            _player1?.Jump();
         }
 
 
@@ -316,7 +314,31 @@ public class TestScreen : Screen
             ScreenManager.ChangeScreen(new MainMenuScreen());
         }
 
-        if (!_isGameOver) GetInput(deltaTime);
+        if (!_isGameOver)
+        {
+            GetInput(deltaTime);
+
+            float dt = (float)deltaTime;
+
+            if (_player1 != null)
+            {
+                PhysicsManager.ApplyGravityAndFloor(_player1, dt);
+                PhysicsManager.KeepPlayerInRing(_player1);
+            }
+
+            if (_player2 != null)
+            {
+                PhysicsManager.ApplyGravityAndFloor(_player2, dt);
+                PhysicsManager.KeepPlayerInRing(_player2);
+            }
+
+            if (_player1 != null && _player2 != null)
+            {
+                PhysicsManager.ResolvePlayerCollision(_player1, _player2);
+            }
+
+        }
+
 
     }
 
@@ -326,26 +348,41 @@ public class TestScreen : Screen
     private void DrawScene()
     {
 
-        _background?.Render();
-
-        if (_ringShader == null || _ring == null || _camera == null) return;
-        _ringTexture?.Bind(TextureUnit.Texture0);
-
-        Gl.Enable(EnableCap.DepthTest);
+        if (_camera == null) return;
 
         Matrix4x4 view = _camera.GetViewMatrix();
         Matrix4x4 projection = _camera.GetProjectionMatrix();
 
-        _ring.Render(_ringShader, view, projection);
+        _currentMap?.Render(view, projection);
 
-        if (_player1 != null && _playerShader != null)
+        if (_playerShader != null)
         {
-            _player1.Render(_playerShader, view, projection);
+            Gl.Enable(EnableCap.DepthTest);
+
+            if (_player1 != null)
+            {
+                _player1.Render(_playerShader, view, projection);
+            }
+
+            if (_player2 != null)
+            {
+                _player2.Render(_playerShader, view, projection);
+            }
         }
 
-        if (_player2 != null && _playerShader != null)
+        if (_showHitboxes && _debugRenderer != null && _playerShader != null)
         {
-            _player2.Render(_playerShader, view, projection);
+            float playerRadius = 0.45f;
+
+            if (_player1 != null)
+            {
+                _debugRenderer.DrawPlayerHitbox(_playerShader, _player1.GetBodyMatrix(), playerRadius, view, projection);
+            }
+
+            if (_player2 != null)
+            {
+                _debugRenderer.DrawPlayerHitbox(_playerShader, _player2.GetBodyMatrix(), playerRadius, view, projection);
+            }
         }
     }
 
@@ -425,6 +462,10 @@ public class TestScreen : Screen
             }
         }
 
+        if (ImGui.Button("Toggle Hitboxes"))
+        {
+            _showHitboxes = !_showHitboxes;
+        }
 
         ImGui.Text($"Player 1 Position: X: {_player1?.Position.X:F2}, Y: {_player1?.Position.Y:F2}, Z: {_player1?.Position.Z:F2}");
         ImGui.Text($"Player 2 Position: X: {_player2?.Position.X:F2}, Y: {_player2?.Position.Y:F2}, Z: {_player2?.Position.Z:F2}");
@@ -521,6 +562,14 @@ public class TestScreen : Screen
         _background?.Dispose();
         _ring?.Dispose();
         _ringShader?.Dispose();
+        _ringTexture?.Dispose();
+        _player1?.Dispose();
+        _player2?.Dispose();
+        _playerShader?.Dispose();
+        _debugRenderer?.Dispose();
+        _currentMap?.Dispose();
+
+
         Console.WriteLine("[Debug] 3D Resources and TestScreen released.");
     }
 }

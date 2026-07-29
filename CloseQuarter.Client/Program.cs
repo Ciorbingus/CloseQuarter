@@ -3,8 +3,9 @@ using Silk.NET.Windowing;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
 using Silk.NET.Input;
-using CloseQuarter.Client.Models;
+
 using CloseQuarter.Client.Managers;
+using CloseQuarter.Client.Screens;
 
 
 namespace CloseQuarter.Client;
