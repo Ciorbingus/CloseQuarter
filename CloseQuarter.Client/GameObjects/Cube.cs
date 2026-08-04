@@ -7,6 +7,8 @@ public class Cube : GameObject
 {
     private readonly bool _onlyFrontTexture;
 
+    public Vector3 PivotPoint { get; set; } = Vector3.Zero;
+
     public Cube(GL gl, float width = 1.0f, float height = 1.0f, float depth = 1.0f, bool onlyFrontTexture = false) : base(gl)
     {
         _onlyFrontTexture = onlyFrontTexture;

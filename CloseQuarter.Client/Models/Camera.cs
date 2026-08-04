@@ -12,8 +12,8 @@ public class Camera
     public float NearPlane { get; set; }
     public float FarPlane { get; set; }
 
-    public float Yaw { get; set; } 
-    public float Pitch { get; set; } = 0.0f;   
+    public float Yaw { get; set; }
+    public float Pitch { get; set; } = 0.0f;
 
     public Camera(Vector3 position, Vector3 target, Vector3 up, float fieldOfView, float aspectRatio, float nearPlane = 0.1f, float farPlane = 100.0f)
     {
@@ -29,7 +29,7 @@ public class Camera
         Yaw = MathF.Atan2(offset.Z, offset.X) * (180.0f / MathF.PI);
     }
 
-    public Camera(float aspectRatio) 
+    public Camera(float aspectRatio)
         : this(new Vector3(0.0f, 4.0f, 12.0f), new Vector3(0.0f, 0.0f, 0.0f), Vector3.UnitY, MathF.PI / 4.0f, aspectRatio)
     {
     }
@@ -44,11 +44,11 @@ public class Camera
         return Matrix4x4.CreatePerspectiveFieldOfView(FieldOfView, AspectRatio, NearPlane, FarPlane);
     }
 
-    
+
     public Vector3 GetForwardVector()
     {
         Vector3 forward = Target - Position;
-        forward.Y = 0f; 
+        forward.Y = 0f;
         return Vector3.Normalize(forward);
     }
 
@@ -104,4 +104,36 @@ public class Camera
     public void UpdateAspectRatio(float aspectRatio) => AspectRatio = aspectRatio;
     public void UpdatePosition(Vector3 position) => Position = position;
     public void UpdateTarget(Vector3 target) => Target = target;
+
+
+    public void UpdateDynamic(Vector3 player1Pos, Vector3 player2Pos, float deltaTime)
+    {
+        Vector3 midpoint = (player1Pos + player2Pos) * 0.5f;
+
+        Vector3 p1ToP2 = player2Pos - player1Pos;
+        p1ToP2.Y = 0;
+
+        float distance = p1ToP2.Length();
+        if (distance < 0.001f) distance = 0.001f;
+
+        Vector3 lineDir = Vector3.Normalize(p1ToP2);
+
+        Vector3 cameraDir = new Vector3(-lineDir.Z, 0, lineDir.X);
+
+        Vector3 currentCamDir = Vector3.Normalize(new Vector3(Position.X - midpoint.X, 0, Position.Z - midpoint.Z));
+        if (Vector3.Dot(cameraDir, currentCamDir) < 0)
+        {
+            cameraDir = -cameraDir;
+        }
+
+        float targetDistance = Math.Clamp(6.0f + distance * 0.8f, 7.0f, 15.0f);
+        float targetHeight = Math.Clamp(2.0f + distance * 0.2f, 2.5f, 5.0f);
+
+        Vector3 desiredPosition = midpoint + (cameraDir * targetDistance) + new Vector3(0, targetHeight, 0);
+
+        Position = Vector3.Lerp(Position, desiredPosition, 6.0f * deltaTime);
+
+        Target = Vector3.Lerp(Target, midpoint + new Vector3(0, 1.0f, 0), 6.0f * deltaTime);
+    }
+
 }

@@ -4,12 +4,10 @@ using System.Drawing;
 using ImGuiNET;
 using System.Numerics;
 
-
 using CloseQuarter.Client.Managers;
 using CloseQuarter.Client.Graphics;
 using CloseQuarter.Client.Models;
 using CloseQuarter.Client.Maps;
-
 
 namespace CloseQuarter.Client.Screens;
 
@@ -24,7 +22,6 @@ public class TestScreen : Screen
     private bool _bgmSoundOn = true;
     private bool _isGameOver = false;
 
-
     private string _backgroundTexturePath = "Textures/night.jpeg";
 
     private string _bgmFilePath = "CloseQuarter.Client/Audio/tekken.wav";
@@ -33,22 +30,16 @@ public class TestScreen : Screen
 
     private Vector4 timerColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-
-
     private MyShader? _ringShader;
     private Ring? _ring;
 
     private MyTexture? _ringTexture;
     private string _ringTexturePath = "Textures/sky.jpg";
 
-
     private Camera? _camera;
-
-
 
     private float _cameraSpeed = 5.0f;
     private float _cameraRotationSpeed = 30.0f;
-
 
     private Player? _player1;
     private Player? _player2;
@@ -60,28 +51,37 @@ public class TestScreen : Screen
     private String _faceTexturePath1 = "Textures/player_face.png";
     private String _faceTexturePath2 = "Textures/player2_face.png";
 
+   private Vector3 _player1Position = new Vector3(-2.5f, 0.0f, 0f);
+private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
-    private Vector3 _player1Position = new Vector3(-4.5f, 0.0f, 2.5f);
-    private Vector3 _player2Position = new Vector3(4.5f, 0.0f, 2.5f);
-
-    private Vector3 _player1Rotation = new Vector3(0.0f, MathF.PI / 2.0f, 0.0f);
-    private Vector3 _player2Rotation = new Vector3(0.0f, -MathF.PI / 2.0f, 0.0f);
-
+    private Vector3 _player1Rotation = new Vector3(0.0f, 90.0f, 0.0f);
+    private Vector3 _player2Rotation = new Vector3(0.0f, -90.0f, 0.0f);
 
     private GameMap? _currentMap;
 
     private Background? _background;
 
+    private float directionFactor = 1.0f;
 
     private bool _showHitboxes = true;
     private DebugRenderer? _debugRenderer;
 
+    private float _lastTapTimeUp = 0f;
+    private float _lastTapTimeDown = 0f;
+    private bool _canTapUp = true;
+    private bool _canTapDown = true;
+    private bool _waitingForSecondUpTap = false;
+    private const float DoubleTapThreshold = 0.22f;
+
+    private float _accumulator = 0.0f;
+    private const float FixedDeltaTime = 1.0f / 60.0f;
+
+    public bool toggleCamera = false;
 
     public override void OnLoad(GL gl, IWindow window)
     {
         base.OnLoad(gl, window);
         Console.WriteLine("[Debug] Test screen has been loaded successfully.");
-
 
         _currentMap = new TestMap(Gl);
         _currentMap.LoadResources();
@@ -141,7 +141,6 @@ public class TestScreen : Screen
         {
             Console.WriteLine($"[OpenGL Error] Failed to initialize DebugRenderer: {ex.Message}");
         }
-
     }
 
     private void GameOver()
@@ -154,135 +153,6 @@ public class TestScreen : Screen
         }
     }
 
-    private void DrawGameOverUI()
-    {
-        float windowWidth = Window.Size.X;
-        float windowHeight = Window.Size.Y;
-
-        Vector2 gameOverSize = new Vector2(400, 200);
-        Vector2 gameOverPos = new Vector2((windowWidth - gameOverSize.X) / 2f, (windowHeight - gameOverSize.Y) / 2f);
-
-        ImGui.SetNextWindowPos(gameOverPos);
-        ImGui.SetNextWindowSize(gameOverSize);
-
-        ImGui.Begin("Game Over", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize);
-
-        ImGui.SetWindowFontScale(1.6f);
-        string title = "GAME OVER";
-        float titleX = (ImGui.GetWindowWidth() - ImGui.CalcTextSize(title).X) / 2f;
-        ImGui.SetCursorPosX(titleX);
-        ImGui.TextColored(new Vector4(1.0f, 0.1f, 0.1f, 1.0f), title);
-        ImGui.SetWindowFontScale(1.0f);
-
-        ImGui.Spacing();
-
-        if (ImGui.Button("Return to Main Menu"))
-        {
-            ScreenManager.ChangeScreen(new MainMenuScreen());
-        }
-
-        if (ImGui.Button("Restart Game"))
-        {
-            ResetGame();
-        }
-
-        ImGui.End();
-    }
-
-
-    private void GetInput(double deltaTime)
-    {
-
-        if (ImGui.IsKeyPressed(ImGuiKey.B))
-        {
-            if (_p2Health > 0f)
-            {
-                _p2Health -= 10f;
-                AudioManager.PlaySFX(_soundEffect, 0.3f);
-            }
-        }
-
-
-        float cameraSpeed = _cameraSpeed * (float)deltaTime;
-
-        if (ImGui.IsKeyDown(ImGuiKey.A))
-        {
-            _camera?.MoveRight(-cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.D))
-        {
-            _camera?.MoveRight(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.W))
-        {
-            _camera?.MoveForward(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.S))
-        {
-            _camera?.MoveBackward(cameraSpeed);
-        }
-
-
-        if (ImGui.IsKeyDown(ImGuiKey.R))
-        {
-            _camera?.MoveUp(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.F))
-        {
-            _camera?.MoveDown(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.Q))
-        {
-            _camera?.RotateAroundTarget(-_cameraRotationSpeed * (float)deltaTime);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.E))
-        {
-            _camera?.RotateAroundTarget(_cameraRotationSpeed * (float)deltaTime);
-        }
-
-
-        float playerSpeed = 1.0f * (float)deltaTime;
-        float rotationSpeed = 1.5f * (float)deltaTime;
-
-
-        if (ImGui.IsKeyDown(ImGuiKey.LeftShift))
-        {
-            playerSpeed *= 3.0f;
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.LeftArrow))
-        {
-            _player1?.MoveBackward(playerSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.RightArrow))
-        {
-            _player1?.MoveForward(playerSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.U))
-        {
-            _player1?.Rotate(rotationSpeed, 0f);
-        }
-        if (ImGui.IsKeyDown(ImGuiKey.O))
-        {
-            _player1?.Rotate(-rotationSpeed, 0f);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.UpArrow))
-        {
-            _player1?.Jump();
-        }
-
-
-
-    }
 
     public override void OnUpdate(double deltaTime)
     {
@@ -308,7 +178,6 @@ public class TestScreen : Screen
 
         GameOver();
 
-
         if (ImGui.IsKeyPressed(ImGuiKey.Escape))
         {
             ScreenManager.ChangeScreen(new MainMenuScreen());
@@ -316,38 +185,190 @@ public class TestScreen : Screen
 
         if (!_isGameOver)
         {
-            GetInput(deltaTime);
+            _accumulator += (float)deltaTime;
+            if (_accumulator > 0.1f) _accumulator = 0.1f;
 
-            float dt = (float)deltaTime;
-
-            if (_player1 != null)
+            while (_accumulator >= FixedDeltaTime)
             {
-                PhysicsManager.ApplyGravityAndFloor(_player1, dt);
-                PhysicsManager.KeepPlayerInRing(_player1);
+                GetInput(FixedDeltaTime);
+
+                if (_player1 != null)
+                {
+                    _player1.UpdateSidestep(FixedDeltaTime);
+                    PhysicsManager.ApplyGravityAndFloor(_player1, FixedDeltaTime);
+                    PhysicsManager.KeepPlayerInRing(_player1);
+                }
+
+                if (_player2 != null)
+                {
+                    _player2.UpdateSidestep(FixedDeltaTime);
+                    PhysicsManager.ApplyGravityAndFloor(_player2, FixedDeltaTime);
+                    PhysicsManager.KeepPlayerInRing(_player2);
+                }
+
+                if (_player1 != null && _player2 != null)
+                {
+                    PhysicsManager.ResolvePlayerCollision(_player1, _player2);
+
+                    _player1.UpdateDynamicKeys(directionFactor);
+                    _player2.UpdateDynamicKeys(-directionFactor);
+                }
+
+                _accumulator -= FixedDeltaTime;
             }
 
-            if (_player2 != null)
+            if (toggleCamera && _player1 != null && _player2 != null)
             {
-                PhysicsManager.ApplyGravityAndFloor(_player2, dt);
-                PhysicsManager.KeepPlayerInRing(_player2);
+                _camera?.UpdateDynamic(_player1.Position, _player2.Position, (float)deltaTime);
             }
-
-            if (_player1 != null && _player2 != null)
-            {
-                PhysicsManager.ResolvePlayerCollision(_player1, _player2);
-            }
-
         }
-
-
     }
 
+    private void GetInput(double deltaTime)
+    {
+        float sidestepForce = 7.0f;
+        float currentTime = (float)ImGui.GetTime();
 
+        if (_camera != null && _player1 != null && _player2 != null)
+        {
+            Vector3 camRight = _camera.GetRightVector();
+            float p1ScreenX = Vector3.Dot(_player1.Position, camRight);
+            float p2ScreenX = Vector3.Dot(_player2.Position, camRight);
+            directionFactor = (p1ScreenX <= p2ScreenX) ? 1.0f : -1.0f;
+        }
+
+        if (ImGui.IsKeyPressed(ImGuiKey.B))
+        {
+            if (_p2Health > 0f)
+            {
+                _p2Health -= 10f;
+                AudioManager.PlaySFX(_soundEffect, 0.3f);
+            }
+        }
+
+        float cameraSpeed = _cameraSpeed * (float)deltaTime;
+
+        if (ImGui.IsKeyDown(ImGuiKey.A))
+        {
+            _camera?.MoveRight(-cameraSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.D))
+        {
+            _camera?.MoveRight(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.W))
+        {
+            _camera?.MoveForward(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.S))
+        {
+            _camera?.MoveBackward(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.R))
+        {
+            _camera?.MoveUp(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.F))
+        {
+            _camera?.MoveDown(cameraSpeed);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.Q))
+        {
+            if (!toggleCamera) _camera?.RotateAroundTarget(-_cameraRotationSpeed * (float)deltaTime);
+        }
+
+        if (ImGui.IsKeyDown(ImGuiKey.E))
+        {
+            if (!toggleCamera) _camera?.RotateAroundTarget(_cameraRotationSpeed * (float)deltaTime);
+        }
+
+        float playerSpeed = 1.0f * (float)deltaTime;
+
+        if (_player1 != null)
+        {
+            if (ImGui.IsKeyDown(_player1.LeftKey))
+            {
+                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
+                if (_canTapUp)
+                {
+                    _canTapUp = false;
+
+                    if (_waitingForSecondUpTap && (currentTime - _lastTapTimeUp <= DoubleTapThreshold))
+                    {
+                        _player1?.SidestepLeft(sidestepForce);
+                        _waitingForSecondUpTap = false;
+                    }
+                    else
+                    {
+                        _lastTapTimeUp = currentTime;
+                        _waitingForSecondUpTap = true;
+                    }
+                }
+            }
+            else
+            {
+                _canTapUp = true;
+            }
+
+            if (_waitingForSecondUpTap && (currentTime - _lastTapTimeUp > DoubleTapThreshold))
+            {
+                _player1?.Jump();
+                _waitingForSecondUpTap = false;
+            }
+
+            if (ImGui.IsKeyDown(_player1.RightKey))
+            {
+                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
+                if (_canTapDown)
+                {
+                    _canTapDown = false;
+
+                    if (currentTime - _lastTapTimeDown <= DoubleTapThreshold)
+                    {
+                        _player1?.SidestepRight(sidestepForce);
+                        _lastTapTimeDown = 0f;
+                    }
+                    else
+                    {
+                        _lastTapTimeDown = currentTime;
+                    }
+                }
+            }
+            else
+            {
+                _canTapDown = true;
+            }
+
+            float runningMultiplier = 1.0f;
+
+            if (ImGui.IsKeyDown(ImGuiKey.LeftShift))
+            {
+                runningMultiplier *= 3.0f;
+            }
+
+            if (ImGui.IsKeyDown(_player1.BackwardKey))
+            {
+                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
+                _player1.MoveBackward(playerSpeed);
+            }
+
+            if (ImGui.IsKeyDown(_player1.ForwardKey))
+            {
+                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
+                _player1.MoveForward(playerSpeed * runningMultiplier);
+            }
+        }
+    }
 
 
     private void DrawScene()
     {
-
         if (_camera == null) return;
 
         Matrix4x4 view = _camera.GetViewMatrix();
@@ -386,7 +407,6 @@ public class TestScreen : Screen
         }
     }
 
-
     private void ResetGame()
     {
         _p1Health = MaxHealth;
@@ -403,7 +423,6 @@ public class TestScreen : Screen
         _player2?.Position = _player2Position;
         _player1?.Rotation = _player1Rotation;
         _player2?.Rotation = _player2Rotation;
-
 
         _camera?.Position = new Vector3(0.0f, 5.0f, 15.0f);
     }
@@ -435,6 +454,13 @@ public class TestScreen : Screen
         {
             AudioManager.PlaySFX(_soundEffect, 0.3f);
         }
+
+        if (ImGui.Button("Toggle Camera Mode"))
+        {
+            toggleCamera = !toggleCamera;
+        }
+
+        ImGui.Text($"Camera Mode: {(toggleCamera ? "Automatic" : "Manual")}");
 
         if (ImGui.Button("Reset Game"))
         {
@@ -546,16 +572,13 @@ public class TestScreen : Screen
         UpdateUI();
     }
 
-
     public override void OnResize(Silk.NET.Maths.Vector2D<int> newSize)
-    {
-        base.OnResize(newSize);
+    { base.OnResize(newSize);
         if (newSize.Y > 0 && _camera != null)
         {
             _camera.UpdateAspectRatio((float)newSize.X / newSize.Y);
         }
     }
-
 
     public override void OnUnload()
     {
@@ -569,7 +592,45 @@ public class TestScreen : Screen
         _debugRenderer?.Dispose();
         _currentMap?.Dispose();
 
-
         Console.WriteLine("[Debug] 3D Resources and TestScreen released.");
     }
+
+
+
+
+    private void DrawGameOverUI()
+    {
+        float windowWidth = Window.Size.X;
+        float windowHeight = Window.Size.Y;
+
+        Vector2 gameOverSize = new Vector2(400, 200);
+        Vector2 gameOverPos = new Vector2((windowWidth - gameOverSize.X) / 2f, (windowHeight - gameOverSize.Y) / 2f);
+
+        ImGui.SetNextWindowPos(gameOverPos);
+        ImGui.SetNextWindowSize(gameOverSize);
+
+        ImGui.Begin("Game Over", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize);
+
+        ImGui.SetWindowFontScale(1.6f);
+        string title = "GAME OVER";
+        float titleX = (ImGui.GetWindowWidth() - ImGui.CalcTextSize(title).X) / 2f;
+        ImGui.SetCursorPosX(titleX);
+        ImGui.TextColored(new Vector4(1.0f, 0.1f, 0.1f, 1.0f), title);
+        ImGui.SetWindowFontScale(1.0f);
+
+        ImGui.Spacing();
+
+        if (ImGui.Button("Return to Main Menu"))
+        {
+            ScreenManager.ChangeScreen(new MainMenuScreen());
+        }
+
+        if (ImGui.Button("Restart Game"))
+        {
+            ResetGame();
+        }
+
+        ImGui.End();
+    }
+
 }

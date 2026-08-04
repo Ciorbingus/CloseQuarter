@@ -4,7 +4,6 @@ using System.Drawing;
 using ImGuiNET;
 using System.Numerics;
 
-
 using CloseQuarter.Client.Managers;
 
 namespace CloseQuarter.Client.Screens;

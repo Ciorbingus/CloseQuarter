@@ -62,3 +62,6 @@
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/player2.png
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/player2_face.png
 /home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/grass.jpg
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/ring.avif
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/ring.jpg
+/home/florian/Projects/CloseQuarter/CloseQuarter.Client/bin/Debug/net10.0/Textures/ring.jpeg

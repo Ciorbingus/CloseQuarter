@@ -16,10 +16,10 @@ public class TestMap : GameMap
     public override void LoadResources()
     {
         Background = new Background(Gl);
-        Background.Initialize("Textures/night.jpeg");
+        Background.Initialize("Textures/sky.jpeg");
 
         GroundTexture = new MyTexture(Gl, "Textures/grass.jpg"); 
-        RingTexture = new MyTexture(Gl, "Textures/player2.png");   
+        RingTexture = new MyTexture(Gl, "Textures/ring.jpeg");   
 
         MapShader = MyShader.FromFiles(Gl, "Shaders/ring.vert", "Shaders/ring.frag");
 
