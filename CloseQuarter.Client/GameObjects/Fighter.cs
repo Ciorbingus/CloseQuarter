@@ -372,7 +372,6 @@ public class Fighter : IDisposable
         }
     }
 
-    // --- ANIMAȚIE D1 (Right Jab - Pumn Drept Neutru) ---
     public void AnimateRightJab(int currentFrame, int startupFrames, int activeFrames, int recoveryFrames)
     {
         int totalFrames = startupFrames + activeFrames + recoveryFrames;
@@ -411,7 +410,6 @@ public class Fighter : IDisposable
         }
     }
 
-    // --- ANIMAȚIE S2 (Left Hook - A doua stânga din combo) ---
     public void AnimateLeftHook(int currentFrame, int startupFrames, int activeFrames, int recoveryFrames)
     {
         int totalFrames = startupFrames + activeFrames + recoveryFrames;
@@ -421,7 +419,6 @@ public class Fighter : IDisposable
         {
             progress = (float)currentFrame / startupFrames;
 
-            // Mișcare amplă de Hook/Upercut din stânga
             LeftArm.ShoulderRotation = new Vector3(Lerp(-55f, -80f, progress), Lerp(20f, 45f, progress), Lerp(0f, -20f, progress));
             LeftArm.LowerArmRotation = new Vector3(Lerp(-75f, -40f, progress), 0f, 0f);
 
