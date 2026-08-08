@@ -186,45 +186,10 @@ public class InputManager
         InputFlags currentFlags = ReadInputFlags(player, punchTriggered, rightPunchTriggered);
         History.AddFrame(currentFlags, currentTime);
 
-        if (rightPunchTriggered)
+        if (punchTriggered || rightPunchTriggered)
         {
-            InputFlags[] comboS1S2D2 = new[]
+            if (player.Moveset.ProcessAttackInput(player, History, punchTriggered, rightPunchTriggered, currentTime))
             {
-                InputFlags.Punch,
-                InputFlags.Punch,
-                InputFlags.RightPunch
-            };
-
-            if (History.CheckSequence(comboS1S2D2, maxWindow: 0.7f, currentTime: currentTime))
-            {
-                player.AttackD2();
-                return;
-            }
-
-            if (!player.IsAttacking)
-            {
-                player.AttackD1();
-                return;
-            }
-        }
-
-        if (punchTriggered)
-        {
-            InputFlags[] comboS1S2 = new[]
-            {
-                InputFlags.Punch,
-                InputFlags.Punch
-            };
-
-            if (History.CheckSequence(comboS1S2, maxWindow: 0.5f, currentTime: currentTime))
-            {
-                player.AttackS2();
-                return;
-            }
-
-            if (!player.IsAttacking)
-            {
-                player.AttackS1();
                 return;
             }
         }
@@ -372,8 +337,6 @@ public class InputManager
         ImGui.SetNextWindowSize(new Vector2(230, 260), ImGuiCond.Always);
 
         ImGui.Begin(title, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse);
-        ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.2f, 1.0f), "--- COMMAND LIST ---");
-        ImGui.Separator();
 
         var recentFrames = History.GetRecentFrames(10);
 
@@ -385,11 +348,11 @@ public class InputManager
 
             if (hasS)
             {
-                ImGui.TextColored(new Vector4(0.2f, 1.0f, 0.3f, 1.0f), $"{dirText} + Left Punch (S)");
+                ImGui.TextColored(new Vector4(0.2f, 1.0f, 0.3f, 1.0f), $"{dirText} + Left Punch (L)");
             }
             else if (hasD)
             {
-                ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), $"{dirText} + Right Punch (D)");
+                ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), $"{dirText} + Right Punch (R)");
             }
             else if (frame.Flags != InputFlags.None)
             {

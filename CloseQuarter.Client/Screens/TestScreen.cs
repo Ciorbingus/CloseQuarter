@@ -86,6 +86,7 @@ public class TestScreen : Screen
         }
 
         _p1Input.Initialize(inputContext);
+        //_p2Input.Initialize(inputContext);
         _cameraInput.Initialize(inputContext);
 
         _currentMap = new TestMap(Gl);
@@ -96,7 +97,7 @@ public class TestScreen : Screen
 
         try
         {
-            _player1 = new Player(Gl);
+            _player1 = Player.CreateFromRoster(Gl, "toma");
             _player1.LoadTextures(Gl, _p1TexturePath, _faceTexturePath1);
             _playerShader = MyShader.FromFiles(Gl, "Shaders/player.vert", "Shaders/player.frag");
 
@@ -114,7 +115,7 @@ public class TestScreen : Screen
 
         try
         {
-            _player2 = new Player(Gl);
+            _player2 = Player.CreateFromRoster(Gl, "toma");             
             _player2.LoadTextures(Gl, _p2TexturePath, _faceTexturePath2);
 
             if (_player2 != null && _playerShader != null && _camera != null)
@@ -210,7 +211,8 @@ public class TestScreen : Screen
                     var (punchPos, punchRadius) = _player1.GetPunchHitbox();
                     if (PhysicsManager.CheckPunchHit(punchPos, punchRadius, _player2))
                     {
-                        _p2Health -= 15f;
+                        float damage = _player1.GetAttackDamage();
+                        _p2Health -= damage;
                         _player2.CurrentState = PlayerState.Hit;
                         _player1.HasHitCurrentAttack = true;
                         AudioManager.PlaySFX(_soundEffect, 0.4f);
@@ -222,7 +224,8 @@ public class TestScreen : Screen
                     var (punchPos, punchRadius) = _player2.GetPunchHitbox();
                     if (PhysicsManager.CheckPunchHit(punchPos, punchRadius, _player1))
                     {
-                        _p1Health -= 15f;
+                        float damage =_player2.GetAttackDamage();
+                        _p1Health -= damage;
                         _player1.CurrentState = PlayerState.Hit;
                         _player2.HasHitCurrentAttack = true;
                         AudioManager.PlaySFX(_soundEffect, 0.4f);
@@ -422,7 +425,8 @@ public class TestScreen : Screen
         ImGui.SetNextWindowPos(new Vector2(20, 20));
         ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P1_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
-        ImGui.TextColored(new Vector4(0.2f, 0.8f, 1.0f, 1.0f), "PLAYER 1");
+        string p1Label = _player1?.DisplayName.ToUpper() ?? "PLAYER 1";
+        ImGui.TextColored(new Vector4(0.1f, 0.1f, 0.1f, 1.0f), p1Label);
 
         if (_p1Health < 25f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
@@ -459,10 +463,10 @@ public class TestScreen : Screen
         ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P2_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
 
-        string p2Label = "PLAYER 2";
+        string p2Label = _player2?.DisplayName.ToUpper() ?? "PLAYER 2";
         float posX = ImGui.GetWindowWidth() - ImGui.CalcTextSize(p2Label).X - 50;
         ImGui.SetCursorPosX(posX);
-        ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), p2Label);
+        ImGui.TextColored(new Vector4(0.3f, 0.3f, 0.3f, 1.0f), p2Label);
 
         if (_p2Health < 25f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));

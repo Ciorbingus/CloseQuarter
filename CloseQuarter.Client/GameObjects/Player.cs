@@ -1,6 +1,5 @@
 using Silk.NET.OpenGL;
 using System.Numerics;
-
 using Silk.NET.Input;
 
 using CloseQuarter.Client.Graphics;
@@ -34,15 +33,17 @@ public enum PlayerState
 public enum AttackType
 {
     None,
-    S1,
-    D1,
-    S2,
-    D2
+    LP1,
+    LP2,
+    RP1,
+    RP2
 }
 
 public class Player : IDisposable
 {
-    public Fighter FighterModel { get; private set; }
+    public string DisplayName { get; set; } = "Player";
+    public Model3D FighterModel { get; private set; } 
+    public IMoveset Moveset { get; set; }
 
     public const float NormalHeight = 1.8f;
     public const float CrouchHeight = 1.0f;
@@ -88,9 +89,23 @@ public class Player : IDisposable
 
     public AttackType CurrentAttackType { get; private set; } = AttackType.None;
 
-    public Player(GL gl)
+    public Player(GL gl, Model3D fighterModel, IMoveset? moveset = null)
     {
-        FighterModel = new Fighter(gl);
+        FighterModel = fighterModel;
+        Moveset = moveset ?? new BoxerMoveset();
+    }
+
+    public static Player CreateFromRoster(GL gl, string characterId)
+    {
+        if (!CharacterRoster.Characters.TryGetValue(characterId, out var def))
+        {
+            def = CharacterRoster.Characters["bobi"];
+        }
+
+        var player = new Player(gl, def.ModelFactory(gl), def.MovesetFactory());
+        player.DisplayName = def.DisplayName;
+        player.LoadTextures(gl, def.BodyTexturePath, def.HeadTexturePath);
+        return player;
     }
 
     public void LoadTextures(GL gl, string bodyTexturePath, string? headTexturePath = null)
@@ -132,8 +147,6 @@ public class Player : IDisposable
 
         return false;
     }
-
-
 
     public void SetCrouchState(bool isCrouching)
     {
@@ -383,13 +396,10 @@ public class Player : IDisposable
         }
     }
 
-    public void AttackS1() => TriggerAttack(AttackType.S1);
-    public void AttackD1() => TriggerAttack(AttackType.D1);
-    public void AttackS2() => TriggerAttack(AttackType.S2);
-    public void AttackD2() => TriggerAttack(AttackType.D2);
-
-    public void PunchLeft() => AttackS1();
-    public void PunchRightHigh() => AttackD2();
+    public void AttackLP1() => TriggerAttack(AttackType.LP1);
+    public void AttackRP1() => TriggerAttack(AttackType.RP1);
+    public void AttackLP2() => TriggerAttack(AttackType.LP2);
+    public void AttackRP2() => TriggerAttack(AttackType.RP2);
 
     private void TriggerAttack(AttackType attack)
     {
@@ -408,21 +418,7 @@ public class Player : IDisposable
 
         if (_attackFrameCounter <= TotalAttackFrames)
         {
-            switch (CurrentAttackType)
-            {
-                case AttackType.S1:
-                    FighterModel.AnimateLeftJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
-                    break;
-                case AttackType.D1:
-                    FighterModel.AnimateRightJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
-                    break;
-                case AttackType.S2:
-                    FighterModel.AnimateLeftHook(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
-                    break;
-                case AttackType.D2:
-                    FighterModel.AnimateRightStraight(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
-                    break;
-            }
+            Moveset.UpdateAttackAnimation(this, _attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
         }
         else
         {
@@ -434,6 +430,11 @@ public class Player : IDisposable
         }
     }
 
+    public float GetAttackDamage()
+    {
+        return Moveset.GetCurrentAttackDamage(CurrentAttackType);
+    }
+
     public bool IsAttackInActiveFrames()
     {
         return IsAttacking &&
@@ -443,26 +444,7 @@ public class Player : IDisposable
 
     public (Vector3 position, float radius) GetPunchHitbox()
     {
-        float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
-        Vector3 forward = Vector3.Transform(new Vector3(0, 0, 1), Matrix4x4.CreateRotationY(yawInRadians));
-
-        float yPos = 1.20f;
-        float radius = 0.17f;
-
-        switch (CurrentAttackType)
-        {
-            case AttackType.S1:
-                yPos = 1.20f; radius = 0.17f; break;
-            case AttackType.D1:
-                yPos = 1.20f; radius = 0.17f; break;
-            case AttackType.S2:
-                yPos = 1.35f; radius = 0.20f; break;
-            case AttackType.D2:
-                yPos = 1.55f; radius = 0.23f; break;
-        }
-
-        Vector3 punchPosition = Position + (forward * 0.8f) + new Vector3(0, yPos, 0);
-        return (punchPosition, radius);
+        return Moveset.GetPunchHitbox(this);
     }
 
     public void UpdateAnimations(float deltaTime)

@@ -2,7 +2,6 @@ using Silk.NET.OpenGL;
 using System.Numerics;
 
 using CloseQuarter.Client.Graphics;
-using CloseQuarter.Shared.Models;
 
 namespace CloseQuarter.Client.Models;
 
