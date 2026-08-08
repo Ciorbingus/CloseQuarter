@@ -1,8 +1,8 @@
 using System.Numerics;
 using Silk.NET.Input;
+using ImGuiNET;
 
 using CloseQuarter.Client.Models;
-using ImGuiNET;
 
 namespace CloseQuarter.Client.Managers;
 
@@ -92,12 +92,30 @@ public class InputHistory
 
 public class InputManager
 {
-    private const float HoldThreshold = 0.15f;
+    private const float HoldThreshold = 0.15f;       
+    private const float DoubleTapThreshold = 0.25f;  
+    private const float DashCooldown = 0.35f;       
+
     private float _crouchPressTime = 0f;
     private bool _isDownKeyPressed = false;
 
+    private float _upPressTime = 0f;
+    private bool _isUpKeyPressed = false;
+
     private bool _wasPunchPressedLastFrame = false;
     private bool _wasRightPunchPressedLastFrame = false;
+
+    private bool _wasForwardPressedLastFrame = false;
+    private bool _wasBackwardPressedLastFrame = false;
+    private bool _wasUpPressedLastFrame = false;
+    private bool _wasDownPressedLastFrame = false;
+
+    private float _lastForwardReleaseTime = -1.0f;
+    private float _lastBackwardReleaseTime = -1.0f;
+    private float _lastUpReleaseTime = -1.0f;
+    private float _lastDownReleaseTime = -1.0f;
+
+    private float _lastDashTime = -1.0f;
 
     private IKeyboard? _keyboard;
 
@@ -111,19 +129,61 @@ public class InputManager
         }
     }
 
+    public void Reset()
+    {
+        _lastForwardReleaseTime = -1.0f;
+        _lastBackwardReleaseTime = -1.0f;
+        _lastUpReleaseTime = -1.0f;
+        _lastDownReleaseTime = -1.0f;
+        _lastDashTime = -1.0f;
+
+        _wasForwardPressedLastFrame = false;
+        _wasBackwardPressedLastFrame = false;
+        _wasUpPressedLastFrame = false;
+        _wasDownPressedLastFrame = false;
+
+        _wasPunchPressedLastFrame = false;
+        _wasRightPunchPressedLastFrame = false;
+
+        _isDownKeyPressed = false;
+        _isUpKeyPressed = false;
+        _crouchPressTime = 0f;
+        _upPressTime = 0f;
+
+        History.Clear();
+    }
+
     public void ProcessInput(Player player, float currentTime)
     {
         bool isPunchDown = _keyboard != null && _keyboard.IsKeyPressed(player.PunchKey);
         bool isRightPunchDown = _keyboard != null && _keyboard.IsKeyPressed(player.RightPunchKey);
 
+        bool isForwardDown = _keyboard != null && _keyboard.IsKeyPressed(player.ForwardKey);
+        bool isBackwardDown = _keyboard != null && _keyboard.IsKeyPressed(player.BackwardKey);
+        bool isUpDown = _keyboard != null && _keyboard.IsKeyPressed(player.LeftKey); 
+        bool isDownDown = _keyboard != null && _keyboard.IsKeyPressed(player.RightKey); 
+
         bool punchTriggered = isPunchDown && !_wasPunchPressedLastFrame;
         bool rightPunchTriggered = isRightPunchDown && !_wasRightPunchPressedLastFrame;
 
+        bool forwardTriggered = isForwardDown && !_wasForwardPressedLastFrame;
+        bool backwardTriggered = isBackwardDown && !_wasBackwardPressedLastFrame;
+        bool upTriggered = isUpDown && !_wasUpPressedLastFrame;
+        bool downTriggered = isDownDown && !_wasDownPressedLastFrame;
+
+        if (_wasForwardPressedLastFrame && !isForwardDown)   _lastForwardReleaseTime = currentTime;
+        if (_wasBackwardPressedLastFrame && !isBackwardDown) _lastBackwardReleaseTime = currentTime;
+        if (_wasUpPressedLastFrame && !isUpDown)             _lastUpReleaseTime = currentTime;
+        if (_wasDownPressedLastFrame && !isDownDown)         _lastDownReleaseTime = currentTime;
+
         _wasPunchPressedLastFrame = isPunchDown;
         _wasRightPunchPressedLastFrame = isRightPunchDown;
+        _wasForwardPressedLastFrame = isForwardDown;
+        _wasBackwardPressedLastFrame = isBackwardDown;
+        _wasUpPressedLastFrame = isUpDown;
+        _wasDownPressedLastFrame = isDownDown;
 
         InputFlags currentFlags = ReadInputFlags(player, punchTriggered, rightPunchTriggered);
-
         History.AddFrame(currentFlags, currentTime);
 
         if (rightPunchTriggered)
@@ -174,16 +234,58 @@ public class InputManager
             return;
         }
 
-        bool jumpPressed = _keyboard != null && _keyboard.IsKeyPressed(player.LeftKey);
-        if (jumpPressed)
+        bool canDash = (currentTime - _lastDashTime) >= DashCooldown;
+
+        if (canDash)
         {
-            if (currentFlags.HasFlag(InputFlags.Forward)) player.Jump(new Vector3(0, 0, 1.0f));
-            else if (currentFlags.HasFlag(InputFlags.Backward)) player.Jump(new Vector3(0, 0, -1.0f));
-            else player.Jump(Vector3.Zero);
-            return;
+            if (forwardTriggered && (currentTime - _lastForwardReleaseTime <= DoubleTapThreshold))
+            {
+                player.FrontDash();
+                _lastDashTime = currentTime;
+                return;
+            }
+            else if (backwardTriggered && (currentTime - _lastBackwardReleaseTime <= DoubleTapThreshold))
+            {
+                player.BackDash();
+                _lastDashTime = currentTime;
+                return;
+            }
+            else if (upTriggered && (currentTime - _lastUpReleaseTime <= DoubleTapThreshold))
+            {
+                player.SideDashRight();
+                _lastDashTime = currentTime;
+                return;
+            }
+            else if (downTriggered && (currentTime - _lastDownReleaseTime <= DoubleTapThreshold))
+            {
+                player.SideDashLeft();
+                _lastDashTime = currentTime;
+                return;
+            }
         }
 
-        if (currentFlags.HasFlag(InputFlags.Down))
+        if (currentFlags.HasFlag(InputFlags.Up) && !player.IsDashing)
+        {
+            if (!_isUpKeyPressed)
+            {
+                _upPressTime = currentTime;
+                _isUpKeyPressed = true;
+            }
+
+            if (currentTime - _upPressTime >= HoldThreshold && player.IsGrounded)
+            {
+                if (currentFlags.HasFlag(InputFlags.Forward)) player.Jump(new Vector3(0, 0, 1.0f));
+                else if (currentFlags.HasFlag(InputFlags.Backward)) player.Jump(new Vector3(0, 0, -1.0f));
+                else player.Jump(Vector3.Zero);
+            }
+            return;
+        }
+        else
+        {
+            _isUpKeyPressed = false;
+        }
+
+        if (currentFlags.HasFlag(InputFlags.Down) && !player.IsDashing)
         {
             if (!_isDownKeyPressed)
             {
@@ -207,24 +309,27 @@ public class InputManager
             }
         }
 
-        if (currentFlags.HasFlag(InputFlags.Forward))
+        if (!player.IsDashing)
         {
-            player.MoveForward(0.05f);
-        }
-        else if (currentFlags.HasFlag(InputFlags.Backward))
-        {
-            player.MoveBackward(0.05f);
-        }
-        else
-        {
-            if (player.IsGrounded &&
-                !player.IsAttacking &&
-                player.CurrentState != PlayerState.Crouching &&
-                player.CurrentState != PlayerState.Jumping &&
-                player.CurrentState != PlayerState.JumpingForward &&
-                player.CurrentState != PlayerState.JumpingBackward)
+            if (currentFlags.HasFlag(InputFlags.Forward))
             {
-                player.CurrentState = PlayerState.Idle;
+                player.MoveForward(0.05f);
+            }
+            else if (currentFlags.HasFlag(InputFlags.Backward))
+            {
+                player.MoveBackward(0.05f);
+            }
+            else
+            {
+                if (player.IsGrounded &&
+                    !player.IsAttacking &&
+                    player.CurrentState != PlayerState.Crouching &&
+                    player.CurrentState != PlayerState.Jumping &&
+                    player.CurrentState != PlayerState.JumpingForward &&
+                    player.CurrentState != PlayerState.JumpingBackward)
+                {
+                    player.CurrentState = PlayerState.Idle;
+                }
             }
         }
     }

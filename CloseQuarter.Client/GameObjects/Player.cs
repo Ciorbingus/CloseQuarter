@@ -34,10 +34,10 @@ public enum PlayerState
 public enum AttackType
 {
     None,
-    S1, 
-    D1, 
-    S2, 
-    D2  
+    S1,
+    D1,
+    S2,
+    D2
 }
 
 public class Player : IDisposable
@@ -71,8 +71,8 @@ public class Player : IDisposable
     public Key LeftKey { get; private set; } = Key.Up;
     public Key RightKey { get; private set; } = Key.Down;
 
-    public Key PunchKey { get; set; } = Key.Z;      
-    public Key RightPunchKey { get; set; } = Key.X;  
+    public Key PunchKey { get; set; } = Key.Z;
+    public Key RightPunchKey { get; set; } = Key.X;
 
     public bool IsAttacking => CurrentState == PlayerState.Attacking;
     public bool HasHitCurrentAttack { get; set; } = false;
@@ -133,10 +133,7 @@ public class Player : IDisposable
         return false;
     }
 
-    public void ResetDash()
-    {
-        _dashVelocity = Vector3.Zero;
-    }
+
 
     public void SetCrouchState(bool isCrouching)
     {
@@ -256,8 +253,79 @@ public class Player : IDisposable
         Position += sideVector * speed;
     }
 
+    private float _sidestepAngleVelocity = 0.0f;
+
+    public void ApplyDash(Vector3 localDirection, float force, PlayerState dashState)
+    {
+        if (!IsGrounded) return;
+
+        SetCrouchState(false);
+        LookAt(OpponentPosition);
+
+        CurrentState = dashState;
+
+        if (dashState == PlayerState.SidestepLeft || dashState == PlayerState.SidestepRight)
+        {
+            Vector3 toPlayer = Position - OpponentPosition;
+            toPlayer.Y = 0;
+            float currentRadius = toPlayer.Length();
+
+            if (currentRadius < 0.2f) currentRadius = 0.2f;
+
+            float desiredLinearSpeed = 7.5f;
+
+            float angularSpeed = desiredLinearSpeed / currentRadius;
+
+            _sidestepAngleVelocity = (dashState == PlayerState.SidestepLeft) ? angularSpeed : -angularSpeed;
+            _dashVelocity = Vector3.Zero;
+        }
+        else
+        {
+            _sidestepAngleVelocity = 0.0f;
+            float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
+            Vector3 worldDirection = Vector3.Transform(localDirection, Matrix4x4.CreateRotationY(yawInRadians));
+            _dashVelocity = worldDirection * force;
+        }
+    }
+
     public void UpdateDash(float deltaTime)
     {
+        if (CurrentState == PlayerState.SidestepLeft || CurrentState == PlayerState.SidestepRight)
+        {
+            Vector3 toPlayer = Position - OpponentPosition;
+            toPlayer.Y = 0;
+            float currentRadius = toPlayer.Length();
+
+            if (currentRadius > 0.05f)
+            {
+                float currentAngle = MathF.Atan2(toPlayer.X, toPlayer.Z);
+
+                currentAngle += _sidestepAngleVelocity * deltaTime;
+
+                Position = new Vector3(
+                    OpponentPosition.X + currentRadius * MathF.Sin(currentAngle),
+                    Position.Y,
+                    OpponentPosition.Z + currentRadius * MathF.Cos(currentAngle)
+                );
+
+                LookAt(OpponentPosition);
+            }
+
+            float deceleration = 14.0f;
+            _sidestepAngleVelocity = MathF.Sign(_sidestepAngleVelocity) *
+                                      MathF.Max(0f, MathF.Abs(_sidestepAngleVelocity) - deceleration * deltaTime);
+
+            if (MathF.Abs(_sidestepAngleVelocity) <= 0.1f)
+            {
+                _sidestepAngleVelocity = 0.0f;
+                if (IsGrounded && !IsAttacking)
+                {
+                    CurrentState = PlayerState.Idle;
+                }
+            }
+            return;
+        }
+
         if (IsDashing)
         {
             Position += _dashVelocity * deltaTime;
@@ -274,17 +342,10 @@ public class Player : IDisposable
         }
     }
 
-    public void ApplyDash(Vector3 localDirection, float force, PlayerState dashState)
+    public void ResetDash()
     {
-        if (!IsGrounded) return;
-
-        SetCrouchState(false);
-        LookAt(OpponentPosition);
-
-        CurrentState = dashState;
-        float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
-        Vector3 worldDirection = Vector3.Transform(localDirection, Matrix4x4.CreateRotationY(yawInRadians));
-        _dashVelocity = worldDirection * force;
+        _dashVelocity = Vector3.Zero;
+        _sidestepAngleVelocity = 0.0f;
     }
 
     public void FrontDash(float force = 12.0f) => ApplyDash(new Vector3(0, 0, 1), force, PlayerState.FrontDashing);

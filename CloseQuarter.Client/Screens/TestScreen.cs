@@ -335,6 +335,12 @@ public class TestScreen : Screen
         _player1?.Rotation = _player1Rotation;
         _player2?.Rotation = _player2Rotation;
 
+        _player1?.ResetDash();
+        _player2?.ResetDash();
+
+        _p1Input.Reset();
+
+
         _camera?.Position = new Vector3(0.0f, 5.0f, 15.0f);
     }
 
