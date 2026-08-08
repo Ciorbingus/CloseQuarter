@@ -31,14 +31,14 @@ public enum PlayerState
     KnockedOut
 }
 
-
 public enum AttackType
 {
     None,
-    LeftPunch,
-    RightPunchHigh
+    S1, 
+    D1, 
+    S2, 
+    D2  
 }
-
 
 public class Player : IDisposable
 {
@@ -72,7 +72,7 @@ public class Player : IDisposable
     public Key RightKey { get; private set; } = Key.Down;
 
     public Key PunchKey { get; set; } = Key.Z;      
-    public Key RightPunchKey { get; set; } = Key.X;
+    public Key RightPunchKey { get; set; } = Key.X;  
 
     public bool IsAttacking => CurrentState == PlayerState.Attacking;
     public bool HasHitCurrentAttack { get; set; } = false;
@@ -86,7 +86,6 @@ public class Player : IDisposable
     private float _walkTimeTimer = 0.0f;
     private float _idleTimeTimer = 0.0f;
 
-
     public AttackType CurrentAttackType { get; private set; } = AttackType.None;
 
     public Player(GL gl)
@@ -98,7 +97,6 @@ public class Player : IDisposable
     {
         FighterModel.LoadTextures(gl, bodyTexturePath, headTexturePath);
     }
-
 
     public void UpdateDynamicKeys(float directionFactor)
     {
@@ -116,6 +114,7 @@ public class Player : IDisposable
             BackwardKey = Key.Right;
         }
     }
+
     public bool IsAnimationLocked => IsAttacking || CurrentState == PlayerState.Hit || CurrentState == PlayerState.KnockedOut;
 
     public bool CanCancelCurrentState(PlayerState newState)
@@ -323,20 +322,19 @@ public class Player : IDisposable
         }
     }
 
-    public void PunchLeft()
-    {
-        ResetDash();
-        CurrentState = PlayerState.Attacking;
-        CurrentAttackType = AttackType.LeftPunch;
-        _attackFrameCounter = 0;
-        HasHitCurrentAttack = false;
-    }
+    public void AttackS1() => TriggerAttack(AttackType.S1);
+    public void AttackD1() => TriggerAttack(AttackType.D1);
+    public void AttackS2() => TriggerAttack(AttackType.S2);
+    public void AttackD2() => TriggerAttack(AttackType.D2);
 
-    public void PunchRightHigh()
+    public void PunchLeft() => AttackS1();
+    public void PunchRightHigh() => AttackD2();
+
+    private void TriggerAttack(AttackType attack)
     {
         ResetDash();
         CurrentState = PlayerState.Attacking;
-        CurrentAttackType = AttackType.RightPunchHigh;
+        CurrentAttackType = attack;
         _attackFrameCounter = 0;
         HasHitCurrentAttack = false;
     }
@@ -349,13 +347,20 @@ public class Player : IDisposable
 
         if (_attackFrameCounter <= TotalAttackFrames)
         {
-            if (CurrentAttackType == AttackType.RightPunchHigh)
+            switch (CurrentAttackType)
             {
-                FighterModel.AnimateRightStraight(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
-            }
-            else
-            {
-                FighterModel.AnimateLeftJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+                case AttackType.S1:
+                    FighterModel.AnimateLeftJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+                    break;
+                case AttackType.D1:
+                    FighterModel.AnimateRightJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+                    break;
+                case AttackType.S2:
+                    FighterModel.AnimateLeftHook(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+                    break;
+                case AttackType.D2:
+                    FighterModel.AnimateRightStraight(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+                    break;
             }
         }
         else
@@ -367,7 +372,6 @@ public class Player : IDisposable
             HasHitCurrentAttack = false;
         }
     }
-
 
     public bool IsAttackInActiveFrames()
     {
@@ -381,12 +385,23 @@ public class Player : IDisposable
         float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
         Vector3 forward = Vector3.Transform(new Vector3(0, 0, 1), Matrix4x4.CreateRotationY(yawInRadians));
 
-        float yPos = CurrentAttackType == AttackType.RightPunchHigh ? 1.55f : 1.20f;
-        Vector3 punchPosition = Position + (forward * 0.85f) + new Vector3(0, yPos, 0);
+        float yPos = 1.20f;
+        float radius = 0.17f;
 
-        float punchRadius = CurrentAttackType == AttackType.RightPunchHigh ? 0.22f : 0.17f;
+        switch (CurrentAttackType)
+        {
+            case AttackType.S1:
+                yPos = 1.20f; radius = 0.17f; break;
+            case AttackType.D1:
+                yPos = 1.20f; radius = 0.17f; break;
+            case AttackType.S2:
+                yPos = 1.35f; radius = 0.20f; break;
+            case AttackType.D2:
+                yPos = 1.55f; radius = 0.23f; break;
+        }
 
-        return (punchPosition, punchRadius);
+        Vector3 punchPosition = Position + (forward * 0.8f) + new Vector3(0, yPos, 0);
+        return (punchPosition, radius);
     }
 
     public void UpdateAnimations(float deltaTime)

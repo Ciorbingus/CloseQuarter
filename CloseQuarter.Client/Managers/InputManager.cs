@@ -15,7 +15,7 @@ public enum InputFlags : ushort
     Up          = 1 << 2,
     Down        = 1 << 3,
     Punch       = 1 << 4, 
-    RightPunch  = 1 << 5, 
+    RightPunch  = 1 << 5,
 
     DownForward = Down | Forward,
     DownBack    = Down | Backward,
@@ -61,7 +61,7 @@ public class InputHistory
         }
     }
 
-    public bool CheckSequence(InputFlags[] sequence, float maxWindow = 0.6f, float currentTime = 0f)
+    public bool CheckSequence(InputFlags[] sequence, float maxWindow = 0.7f, float currentTime = 0f)
     {
         if (_history.Count == 0 || sequence.Length == 0) return false;
 
@@ -128,30 +128,45 @@ public class InputManager
 
         if (rightPunchTriggered)
         {
-            InputFlags[] combo112 = new[]
+            InputFlags[] comboS1S2D2 = new[]
             {
                 InputFlags.Punch,
                 InputFlags.Punch,
                 InputFlags.RightPunch
             };
 
-            if (History.CheckSequence(combo112, maxWindow: 0.6f, currentTime: currentTime))
+            if (History.CheckSequence(comboS1S2D2, maxWindow: 0.7f, currentTime: currentTime))
             {
-                player.PunchRightHigh();
+                player.AttackD2();
                 return;
             }
 
             if (!player.IsAttacking)
             {
-                player.PunchRightHigh();
+                player.AttackD1();
                 return;
             }
         }
 
-        if (punchTriggered && !player.IsAttacking)
+        if (punchTriggered)
         {
-            player.PunchLeft();
-            return;
+            InputFlags[] comboS1S2 = new[]
+            {
+                InputFlags.Punch,
+                InputFlags.Punch
+            };
+
+            if (History.CheckSequence(comboS1S2, maxWindow: 0.5f, currentTime: currentTime))
+            {
+                player.AttackS2();
+                return;
+            }
+
+            if (!player.IsAttacking)
+            {
+                player.AttackS1();
+                return;
+            }
         }
 
         if (player.IsAttacking)
@@ -252,7 +267,7 @@ public class InputManager
         ImGui.SetNextWindowSize(new Vector2(230, 260), ImGuiCond.Always);
 
         ImGui.Begin(title, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse);
-        ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.2f, 1.0f), "--- INPUT HISTORY ---");
+        ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.2f, 1.0f), "--- COMMAND LIST ---");
         ImGui.Separator();
 
         var recentFrames = History.GetRecentFrames(10);
@@ -260,16 +275,16 @@ public class InputManager
         foreach (var frame in recentFrames)
         {
             string dirText = GetDirectionText(frame.Flags);
-            bool hasPunch = frame.HasFlag(InputFlags.Punch);
-            bool hasRightPunch = frame.HasFlag(InputFlags.RightPunch);
+            bool hasS = frame.HasFlag(InputFlags.Punch);
+            bool hasD = frame.HasFlag(InputFlags.RightPunch);
 
-            if (hasPunch)
+            if (hasS)
             {
-                ImGui.TextColored(new Vector4(0.2f, 1.0f, 0.3f, 1.0f), $"{dirText} + LP (1)");
+                ImGui.TextColored(new Vector4(0.2f, 1.0f, 0.3f, 1.0f), $"{dirText} + Left Punch (S)");
             }
-            else if (hasRightPunch)
+            else if (hasD)
             {
-                ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), $"{dirText} + RP (2)");
+                ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), $"{dirText} + Right Punch (D)");
             }
             else if (frame.Flags != InputFlags.None)
             {
