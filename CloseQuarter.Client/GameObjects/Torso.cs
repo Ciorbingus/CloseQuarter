@@ -20,7 +20,8 @@ public class Torso : IDisposable
     public Vector3 AbdomenRotation { get; set; } = Vector3.Zero;
 
     public Vector3 PivotPoint { get; set; } = Vector3.Zero;
-
+    public Vector3 AbdomenPivot { get; set; } = new Vector3(0.0f, -0.225f, 0.0f);
+    public Vector3 ChestPivot { get; set; } = new Vector3(0.0f, -0.25f, 0.0f);
 
     public Torso(GL gl)
     {
@@ -34,24 +35,39 @@ public class Torso : IDisposable
         _bodyTexture = new MyTexture(gl, bodyTexturePath);
     }
 
+    private Matrix4x4 CreateTransformWithPivot(Vector3 rotation, Vector3 pivot, Vector3 translation)
+    {
+        float rotX = rotation.X * (MathF.PI / 180.0f);
+        float rotY = rotation.Y * (MathF.PI / 180.0f);
+        float rotZ = rotation.Z * (MathF.PI / 180.0f);
+
+        return Matrix4x4.CreateTranslation(-pivot) *
+               Matrix4x4.CreateRotationX(rotX) *
+               Matrix4x4.CreateRotationY(rotY) *
+               Matrix4x4.CreateRotationZ(rotZ) *
+               Matrix4x4.CreateTranslation(pivot) *
+               Matrix4x4.CreateTranslation(translation);
+    }
+
     public Matrix4x4 Render(MyShader shader, Matrix4x4 parentMatrix, Matrix4x4 view, Matrix4x4 projection)
     {
         _bodyTexture?.Bind(TextureUnit.Texture0);
 
-        Matrix4x4 torsoBase = Matrix4x4.CreateRotationX(Rotation.X) *
-                              Matrix4x4.CreateRotationY(Rotation.Y) *
-                              Matrix4x4.CreateRotationZ(Rotation.Z) *
+        float rotX = Rotation.X * (MathF.PI / 180.0f);
+        float rotY = Rotation.Y * (MathF.PI / 180.0f);
+        float rotZ = Rotation.Z * (MathF.PI / 180.0f);
+
+        Matrix4x4 torsoBase = Matrix4x4.CreateTranslation(-PivotPoint) *
+                              Matrix4x4.CreateRotationX(rotX) *
+                              Matrix4x4.CreateRotationY(rotY) *
+                              Matrix4x4.CreateRotationZ(rotZ) *
+                              Matrix4x4.CreateTranslation(PivotPoint) *
                               Matrix4x4.CreateTranslation(Position) * parentMatrix;
 
-        Matrix4x4 abdomenMatrix = Matrix4x4.CreateRotationX(AbdomenRotation.X) *
-                                  Matrix4x4.CreateRotationY(AbdomenRotation.Y) *
-                                  Matrix4x4.CreateRotationZ(AbdomenRotation.Z) * torsoBase;
+        Matrix4x4 abdomenMatrix = CreateTransformWithPivot(AbdomenRotation, AbdomenPivot, Vector3.Zero) * torsoBase;
         RenderPiece(Abdomen, abdomenMatrix, shader, view, projection);
 
-        Matrix4x4 chestMatrix = Matrix4x4.CreateRotationX(ChestRotation.X) *
-                                Matrix4x4.CreateRotationY(ChestRotation.Y) *
-                                Matrix4x4.CreateRotationZ(ChestRotation.Z) *
-                                Matrix4x4.CreateTranslation(0.0f, 0.45f, 0.0f) * abdomenMatrix;
+        Matrix4x4 chestMatrix = CreateTransformWithPivot(ChestRotation, ChestPivot, new Vector3(0.0f, 0.45f, 0.0f)) * abdomenMatrix;
         RenderPiece(Chest, chestMatrix, shader, view, projection);
 
         Matrix4x4 neckMatrix = Matrix4x4.CreateTranslation(0.0f, 0.30f, 0.0f) * chestMatrix;

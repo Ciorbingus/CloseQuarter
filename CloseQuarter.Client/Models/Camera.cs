@@ -126,7 +126,7 @@ public class Camera
             cameraDir = -cameraDir;
         }
 
-        float targetDistance = Math.Clamp(6.0f + distance * 0.8f, 7.0f, 15.0f);
+        float targetDistance = Math.Clamp(3.0f + distance * 0.1f, 7.0f, 15.0f);
         float targetHeight = Math.Clamp(2.0f + distance * 0.2f, 2.5f, 5.0f);
 
         Vector3 desiredPosition = midpoint + (cameraDir * targetDistance) + new Vector3(0, targetHeight, 0);

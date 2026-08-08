@@ -1,5 +1,6 @@
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using Silk.NET.Input;
 using System.Drawing;
 using ImGuiNET;
 using System.Numerics;
@@ -22,19 +23,11 @@ public class TestScreen : Screen
     private bool _bgmSoundOn = true;
     private bool _isGameOver = false;
 
-    private string _backgroundTexturePath = "Textures/night.jpeg";
-
     private string _bgmFilePath = "CloseQuarter.Client/Audio/tekken.wav";
     private string _soundEffect = "CloseQuarter.Client/Audio/boom.wav";
     private bool _bgmStarted = false;
 
     private Vector4 timerColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-
-    private MyShader? _ringShader;
-    private Ring? _ring;
-
-    private MyTexture? _ringTexture;
-    private string _ringTexturePath = "Textures/sky.jpg";
 
     private Camera? _camera;
 
@@ -51,37 +44,49 @@ public class TestScreen : Screen
     private String _faceTexturePath1 = "Textures/player_face.png";
     private String _faceTexturePath2 = "Textures/player2_face.png";
 
-   private Vector3 _player1Position = new Vector3(-2.5f, 0.0f, 0f);
-private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
+    private Vector3 _player1Position = new Vector3(-2.5f, 0.0f, 0f);
+    private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
     private Vector3 _player1Rotation = new Vector3(0.0f, 90.0f, 0.0f);
     private Vector3 _player2Rotation = new Vector3(0.0f, -90.0f, 0.0f);
 
     private GameMap? _currentMap;
 
-    private Background? _background;
-
     private float directionFactor = 1.0f;
 
     private bool _showHitboxes = true;
     private DebugRenderer? _debugRenderer;
-
-    private float _lastTapTimeUp = 0f;
-    private float _lastTapTimeDown = 0f;
-    private bool _canTapUp = true;
-    private bool _canTapDown = true;
-    private bool _waitingForSecondUpTap = false;
-    private const float DoubleTapThreshold = 0.22f;
 
     private float _accumulator = 0.0f;
     private const float FixedDeltaTime = 1.0f / 60.0f;
 
     public bool toggleCamera = false;
 
+    private readonly InputManager _p1Input = new();
+    private readonly InputManager _p2Input = new();
+    private readonly InputManager _cameraInput = new();
+    private IKeyboard? _keyboard;
+    private float _totalGameTime = 0f;
+
     public override void OnLoad(GL gl, IWindow window)
     {
         base.OnLoad(gl, window);
-        Console.WriteLine("[Debug] Test screen has been loaded successfully.");
+
+        IInputContext inputContext = Program.InputContext;
+
+        if (inputContext != null && inputContext.Keyboards.Count > 0)
+        {
+            _keyboard = inputContext.Keyboards[0];
+        }
+
+        if (inputContext == null || inputContext.Keyboards.Count == 0)
+        {
+            Console.WriteLine("[Input Error] No keyboard found. Input will not work.");
+            return;
+        }
+
+        _p1Input.Initialize(inputContext);
+        _cameraInput.Initialize(inputContext);
 
         _currentMap = new TestMap(Gl);
         _currentMap.LoadResources();
@@ -97,13 +102,9 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
             if (_player1 != null && _playerShader != null && _camera != null)
             {
-                Matrix4x4 view = _camera.GetViewMatrix();
-                Matrix4x4 projection = _camera.GetProjectionMatrix();
-
                 _player1.Position = _player1Position;
                 _player1.Rotation = _player1Rotation;
-
-                Console.WriteLine("[Debug] Player resources loaded successfully.");
+                _player1.PunchKey = Key.B;
             }
         }
         catch (Exception ex)
@@ -118,13 +119,9 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
             if (_player2 != null && _playerShader != null && _camera != null)
             {
-                Matrix4x4 view = _camera.GetViewMatrix();
-                Matrix4x4 projection = _camera.GetProjectionMatrix();
-
                 _player2.Position = _player2Position;
                 _player2.Rotation = _player2Rotation;
-
-                Console.WriteLine("[Debug] Player 2 resources loaded successfully.");
+                //_player2.PunchKey = Key.F;
             }
         }
         catch (Exception ex)
@@ -135,7 +132,6 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
         try
         {
             _debugRenderer = new DebugRenderer(Gl, segments: 32);
-            Console.WriteLine("[Debug] DebugRenderer initialized successfully.");
         }
         catch (Exception ex)
         {
@@ -153,9 +149,10 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
         }
     }
 
-
     public override void OnUpdate(double deltaTime)
     {
+        _totalGameTime += (float)deltaTime;
+
         _isGameOver = (_p1Health <= 0f || _p2Health <= 0f || _timer <= 0f);
 
         if (!_bgmStarted)
@@ -178,7 +175,7 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
         GameOver();
 
-        if (ImGui.IsKeyPressed(ImGuiKey.Escape))
+        if (_keyboard != null && _keyboard.IsKeyPressed(Key.Escape))
         {
             ScreenManager.ChangeScreen(new MainMenuScreen());
         }
@@ -194,16 +191,42 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
                 if (_player1 != null)
                 {
-                    _player1.UpdateSidestep(FixedDeltaTime);
+                    _player1.UpdateAnimations(FixedDeltaTime);
+                    _player1.UpdateDash(FixedDeltaTime);
                     PhysicsManager.ApplyGravityAndFloor(_player1, FixedDeltaTime);
                     PhysicsManager.KeepPlayerInRing(_player1);
                 }
 
                 if (_player2 != null)
                 {
-                    _player2.UpdateSidestep(FixedDeltaTime);
+                    _player2.UpdateAnimations(FixedDeltaTime);
+                    _player2.UpdateDash(FixedDeltaTime);
                     PhysicsManager.ApplyGravityAndFloor(_player2, FixedDeltaTime);
                     PhysicsManager.KeepPlayerInRing(_player2);
+                }
+
+                if (_player1 != null && _player2 != null && _player1.IsAttackInActiveFrames() && !_player1.HasHitCurrentAttack)
+                {
+                    var (punchPos, punchRadius) = _player1.GetPunchHitbox();
+                    if (PhysicsManager.CheckPunchHit(punchPos, punchRadius, _player2))
+                    {
+                        _p2Health -= 15f;
+                        _player2.CurrentState = PlayerState.Hit;
+                        _player1.HasHitCurrentAttack = true;
+                        AudioManager.PlaySFX(_soundEffect, 0.4f);
+                    }
+                }
+
+                if (_player2 != null && _player1 != null && _player2.IsAttackInActiveFrames() && !_player2.HasHitCurrentAttack)
+                {
+                    var (punchPos, punchRadius) = _player2.GetPunchHitbox();
+                    if (PhysicsManager.CheckPunchHit(punchPos, punchRadius, _player1))
+                    {
+                        _p1Health -= 15f;
+                        _player1.CurrentState = PlayerState.Hit;
+                        _player2.HasHitCurrentAttack = true;
+                        AudioManager.PlaySFX(_soundEffect, 0.4f);
+                    }
                 }
 
                 if (_player1 != null && _player2 != null)
@@ -212,6 +235,9 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
                     _player1.UpdateDynamicKeys(directionFactor);
                     _player2.UpdateDynamicKeys(-directionFactor);
+
+                    _player1.SetOpponentPosition(_player2.Position);
+                    _player2.SetOpponentPosition(_player1.Position);
                 }
 
                 _accumulator -= FixedDeltaTime;
@@ -226,146 +252,21 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
     private void GetInput(double deltaTime)
     {
-        float sidestepForce = 7.0f;
-        float currentTime = (float)ImGui.GetTime();
-
-        if (_camera != null && _player1 != null && _player2 != null)
-        {
-            Vector3 camRight = _camera.GetRightVector();
-            float p1ScreenX = Vector3.Dot(_player1.Position, camRight);
-            float p2ScreenX = Vector3.Dot(_player2.Position, camRight);
-            directionFactor = (p1ScreenX <= p2ScreenX) ? 1.0f : -1.0f;
-        }
-
-        if (ImGui.IsKeyPressed(ImGuiKey.B))
-        {
-            if (_p2Health > 0f)
-            {
-                _p2Health -= 10f;
-                AudioManager.PlaySFX(_soundEffect, 0.3f);
-            }
-        }
-
-        float cameraSpeed = _cameraSpeed * (float)deltaTime;
-
-        if (ImGui.IsKeyDown(ImGuiKey.A))
-        {
-            _camera?.MoveRight(-cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.D))
-        {
-            _camera?.MoveRight(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.W))
-        {
-            _camera?.MoveForward(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.S))
-        {
-            _camera?.MoveBackward(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.R))
-        {
-            _camera?.MoveUp(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.F))
-        {
-            _camera?.MoveDown(cameraSpeed);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.Q))
-        {
-            if (!toggleCamera) _camera?.RotateAroundTarget(-_cameraRotationSpeed * (float)deltaTime);
-        }
-
-        if (ImGui.IsKeyDown(ImGuiKey.E))
-        {
-            if (!toggleCamera) _camera?.RotateAroundTarget(_cameraRotationSpeed * (float)deltaTime);
-        }
-
-        float playerSpeed = 1.0f * (float)deltaTime;
-
         if (_player1 != null)
         {
-            if (ImGui.IsKeyDown(_player1.LeftKey))
-            {
-                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
-                if (_canTapUp)
-                {
-                    _canTapUp = false;
+            _p1Input.ProcessInput(_player1, _totalGameTime);
+        }
 
-                    if (_waitingForSecondUpTap && (currentTime - _lastTapTimeUp <= DoubleTapThreshold))
-                    {
-                        _player1?.SidestepLeft(sidestepForce);
-                        _waitingForSecondUpTap = false;
-                    }
-                    else
-                    {
-                        _lastTapTimeUp = currentTime;
-                        _waitingForSecondUpTap = true;
-                    }
-                }
-            }
-            else
-            {
-                _canTapUp = true;
-            }
+        if (_player2 != null)
+        {
+            _p2Input.ProcessInput(_player2, _totalGameTime);
+        }
 
-            if (_waitingForSecondUpTap && (currentTime - _lastTapTimeUp > DoubleTapThreshold))
-            {
-                _player1?.Jump();
-                _waitingForSecondUpTap = false;
-            }
-
-            if (ImGui.IsKeyDown(_player1.RightKey))
-            {
-                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
-                if (_canTapDown)
-                {
-                    _canTapDown = false;
-
-                    if (currentTime - _lastTapTimeDown <= DoubleTapThreshold)
-                    {
-                        _player1?.SidestepRight(sidestepForce);
-                        _lastTapTimeDown = 0f;
-                    }
-                    else
-                    {
-                        _lastTapTimeDown = currentTime;
-                    }
-                }
-            }
-            else
-            {
-                _canTapDown = true;
-            }
-
-            float runningMultiplier = 1.0f;
-
-            if (ImGui.IsKeyDown(ImGuiKey.LeftShift))
-            {
-                runningMultiplier *= 3.0f;
-            }
-
-            if (ImGui.IsKeyDown(_player1.BackwardKey))
-            {
-                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
-                _player1.MoveBackward(playerSpeed);
-            }
-
-            if (ImGui.IsKeyDown(_player1.ForwardKey))
-            {
-                _player1.LookAt(_player2?.Position ?? Vector3.Zero);
-                _player1.MoveForward(playerSpeed * runningMultiplier);
-            }
+        if (_camera != null && !toggleCamera)
+        {
+            _cameraInput.ProcessCameraInput(_camera, (float)deltaTime, _cameraRotationSpeed, _cameraSpeed);
         }
     }
-
 
     private void DrawScene()
     {
@@ -393,22 +294,32 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
         if (_showHitboxes && _debugRenderer != null && _playerShader != null)
         {
-            float playerRadius = 0.45f;
-
             if (_player1 != null)
             {
-                _debugRenderer.DrawPlayerHitbox(_playerShader, _player1.GetBodyMatrix(), playerRadius, view, projection);
+                _debugRenderer.DrawPlayerHitbox(_playerShader, _player1, view, projection);
+                if (_player1.IsAttackInActiveFrames())
+                {
+                    var (punchPos, punchRadius) = _player1.GetPunchHitbox();
+                    _debugRenderer.DrawPunchHitbox(_playerShader, punchPos, punchRadius, view, projection);
+                }
             }
 
             if (_player2 != null)
             {
-                _debugRenderer.DrawPlayerHitbox(_playerShader, _player2.GetBodyMatrix(), playerRadius, view, projection);
+                _debugRenderer.DrawPlayerHitbox(_playerShader, _player2, view, projection);
+                if (_player2.IsAttackInActiveFrames())
+                {
+                    var (punchPos, punchRadius) = _player2.GetPunchHitbox();
+                    _debugRenderer.DrawPunchHitbox(_playerShader, punchPos, punchRadius, view, projection);
+                }
             }
         }
     }
 
     private void ResetGame()
     {
+        _totalGameTime = 0f;
+
         _p1Health = MaxHealth;
         _p2Health = MaxHealth;
         _timer = 90f;
@@ -429,7 +340,6 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
     private void UpdateUI()
     {
-        // Debug Window
         ImGui.Begin("Debug Engine");
         ImGui.Text($"FPS: {1.0 / ImGui.GetIO().DeltaTime:F0}");
         ImGui.Separator();
@@ -496,11 +406,13 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
         ImGui.Text($"Player 1 Position: X: {_player1?.Position.X:F2}, Y: {_player1?.Position.Y:F2}, Z: {_player1?.Position.Z:F2}");
         ImGui.Text($"Player 2 Position: X: {_player2?.Position.X:F2}, Y: {_player2?.Position.Y:F2}, Z: {_player2?.Position.Z:F2}");
 
+        ImGui.Text($"Player 1 State: {_player1?.CurrentState}");
+        ImGui.Text($"Player 2 State: {_player2?.CurrentState}");
+
         ImGui.End();
 
         float windowWidth = Window.Size.X;
 
-        // Player 1 HUD
         ImGui.SetNextWindowPos(new Vector2(20, 20));
         ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P1_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
@@ -519,7 +431,6 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
         ImGui.PopStyleColor();
         ImGui.End();
 
-        // Timer HUD
         ImGui.SetNextWindowPos(new Vector2((windowWidth / 2f) - 40, 15));
         ImGui.SetNextWindowSize(new Vector2(80, 60));
         ImGui.Begin("Timer_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
@@ -538,7 +449,6 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
         ImGui.SetWindowFontScale(1.0f);
         ImGui.End();
 
-        // Player 2 HUD
         ImGui.SetNextWindowPos(new Vector2(windowWidth - 420, 20));
         ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P2_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
@@ -573,7 +483,8 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
     }
 
     public override void OnResize(Silk.NET.Maths.Vector2D<int> newSize)
-    { base.OnResize(newSize);
+    {
+        base.OnResize(newSize);
         if (newSize.Y > 0 && _camera != null)
         {
             _camera.UpdateAspectRatio((float)newSize.X / newSize.Y);
@@ -582,21 +493,12 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
     public override void OnUnload()
     {
-        _background?.Dispose();
-        _ring?.Dispose();
-        _ringShader?.Dispose();
-        _ringTexture?.Dispose();
         _player1?.Dispose();
         _player2?.Dispose();
         _playerShader?.Dispose();
         _debugRenderer?.Dispose();
         _currentMap?.Dispose();
-
-        Console.WriteLine("[Debug] 3D Resources and TestScreen released.");
     }
-
-
-
 
     private void DrawGameOverUI()
     {
@@ -632,5 +534,4 @@ private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
         ImGui.End();
     }
-
 }

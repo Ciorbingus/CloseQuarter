@@ -19,7 +19,7 @@ public class TestMap : GameMap
         Background.Initialize("Textures/sky.jpeg");
 
         GroundTexture = new MyTexture(Gl, "Textures/grass.jpg"); 
-        RingTexture = new MyTexture(Gl, "Textures/ring.jpeg");   
+        RingTexture = new MyTexture(Gl, "Textures/dirt.jpeg");   
 
         MapShader = MyShader.FromFiles(Gl, "Shaders/ring.vert", "Shaders/ring.frag");
 

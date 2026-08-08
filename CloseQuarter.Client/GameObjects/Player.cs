@@ -1,6 +1,7 @@
 using Silk.NET.OpenGL;
 using System.Numerics;
-using ImGuiNET;
+
+using Silk.NET.Input;
 
 using CloseQuarter.Client.Graphics;
 
@@ -11,7 +12,13 @@ public enum PlayerState
     Idle,
     Walking,
     Running,
+    SideWalkingLeft,
+    SideWalkingRight,
+    FrontDashing,
+    BackDashing,
     Jumping,
+    JumpingForward,
+    JumpingBackward,
     Falling,
     Rising,
     Crouching,
@@ -20,12 +27,19 @@ public enum PlayerState
     Attacking,
     Defending,
     Downed,
+    Hit,
     KnockedOut
 }
 
 public class Player : IDisposable
 {
     public Fighter FighterModel { get; private set; }
+
+    public const float NormalHeight = 1.8f;
+    public const float CrouchHeight = 1.0f;
+
+    public float Radius { get; set; } = 0.3f;
+    public float Height { get; set; } = NormalHeight;
 
     public Vector3 Position { get; set; } = Vector3.Zero;
     public Vector3 Rotation { get; set; } = Vector3.Zero;
@@ -38,15 +52,29 @@ public class Player : IDisposable
     public PlayerState CurrentState { get; set; } = PlayerState.Idle;
     public PlayerState PreviousState { get; set; } = PlayerState.Idle;
 
-    private Vector3 _sidestepVelocity = Vector3.Zero;
-    public bool IsSidestepping => _sidestepVelocity.LengthSquared() > 0.01f;
+    private Vector3 _dashVelocity = Vector3.Zero;
+    public bool IsDashing => _dashVelocity.LengthSquared() > 0.01f;
 
-    public ImGuiKey ForwardKey { get; private set; } = ImGuiKey.RightArrow;
-    public ImGuiKey BackwardKey { get; private set; } = ImGuiKey.LeftArrow;
-    public ImGuiKey LeftKey { get; private set; } = ImGuiKey.UpArrow;
-    public ImGuiKey RightKey { get; private set; } = ImGuiKey.DownArrow;
+    public Vector3 OpponentPosition { get; set; } = Vector3.Zero;
 
-    public ImGuiKey PunchKey { get; set; } = ImGuiKey.B;
+    public Key ForwardKey { get; private set; } = Key.Right;
+    public Key BackwardKey { get; private set; } = Key.Left;
+    public Key LeftKey { get; private set; } = Key.Up;
+    public Key RightKey { get; private set; } = Key.Down;
+
+    public Key PunchKey { get; set; } = Key.B;
+
+    public bool IsAttacking => CurrentState == PlayerState.Attacking;
+    public bool HasHitCurrentAttack { get; set; } = false;
+
+    private int _attackFrameCounter = 0;
+    private const int StartupFrames = 4;
+    private const int ActiveFrames = 3;
+    private const int RecoveryFrames = 5;
+    private const int TotalAttackFrames = StartupFrames + ActiveFrames + RecoveryFrames;
+
+    private float _walkTimeTimer = 0.0f;
+    private float _idleTimeTimer = 0.0f;
 
     public Player(GL gl)
     {
@@ -58,22 +86,69 @@ public class Player : IDisposable
         FighterModel.LoadTextures(gl, bodyTexturePath, headTexturePath);
     }
 
+
     public void UpdateDynamicKeys(float directionFactor)
     {
+        LeftKey = Key.Up;
+        RightKey = Key.Down;
+
         if (directionFactor >= 0f)
         {
-            ForwardKey = ImGuiKey.RightArrow;
-            BackwardKey = ImGuiKey.LeftArrow;
-            LeftKey = ImGuiKey.UpArrow;
-            RightKey = ImGuiKey.DownArrow;
+            ForwardKey = Key.Right;
+            BackwardKey = Key.Left;
         }
         else
         {
-            ForwardKey = ImGuiKey.LeftArrow;
-            BackwardKey = ImGuiKey.RightArrow;
-            LeftKey = ImGuiKey.DownArrow;
-            RightKey = ImGuiKey.UpArrow;
+            ForwardKey = Key.Left;
+            BackwardKey = Key.Right;
         }
+    }
+    public bool IsAnimationLocked => IsAttacking || CurrentState == PlayerState.Hit || CurrentState == PlayerState.KnockedOut;
+
+    public bool CanCancelCurrentState(PlayerState newState)
+    {
+        if (!IsGrounded) return false;
+
+        if (CurrentState == PlayerState.Walking || CurrentState == PlayerState.SideWalkingLeft || CurrentState == PlayerState.SideWalkingRight)
+            return true;
+
+        if (IsDashing && _dashVelocity.LengthSquared() < 4.0f && newState == PlayerState.Attacking)
+            return true;
+
+        if (IsAttacking && _attackFrameCounter > (StartupFrames + ActiveFrames))
+            return true;
+
+        return false;
+    }
+
+    public void ResetDash()
+    {
+        _dashVelocity = Vector3.Zero;
+    }
+
+    public void SetCrouchState(bool isCrouching)
+    {
+        if (isCrouching)
+        {
+            if (CurrentState != PlayerState.Jumping && CurrentState != PlayerState.Falling && !IsAttacking)
+            {
+                CurrentState = PlayerState.Crouching;
+                Height = CrouchHeight;
+            }
+        }
+        else
+        {
+            Height = NormalHeight;
+            if (CurrentState == PlayerState.Crouching)
+            {
+                CurrentState = PlayerState.Idle;
+            }
+        }
+    }
+
+    public void SetOpponentPosition(Vector3 opponentPosition)
+    {
+        OpponentPosition = opponentPosition;
     }
 
     public Matrix4x4 GetBodyMatrix()
@@ -82,11 +157,19 @@ public class Player : IDisposable
         float rotY = Rotation.Y * (MathF.PI / 180.0f);
         float rotZ = Rotation.Z * (MathF.PI / 180.0f);
 
+        float yOffset = CurrentState == PlayerState.Crouching ? -0.4f : 0.0f;
+        if (CurrentState == PlayerState.Downed || CurrentState == PlayerState.KnockedOut)
+        {
+            yOffset = -0.85f;
+        }
+
+        Vector3 visualPosition = Position + new Vector3(0.0f, yOffset, 0.0f);
+
         return Matrix4x4.CreateScale(1.0f) *
                Matrix4x4.CreateRotationX(rotX) *
                Matrix4x4.CreateRotationY(rotY) *
                Matrix4x4.CreateRotationZ(rotZ) *
-               Matrix4x4.CreateTranslation(Position);
+               Matrix4x4.CreateTranslation(visualPosition);
     }
 
     public void Render(MyShader shader, Matrix4x4 view, Matrix4x4 projection)
@@ -96,15 +179,38 @@ public class Player : IDisposable
 
     public void LookAt(Vector3 targetPosition)
     {
-        Vector3 direction = Vector3.Normalize(targetPosition - Position);
-        float yaw = MathF.Atan2(direction.X, direction.Z) * (180.0f / MathF.PI);
-        float pitch = MathF.Asin(direction.Y) * (180.0f / MathF.PI);
+        Vector3 direction = targetPosition - Position;
 
-        Rotation = new Vector3(pitch, yaw, 0.0f);
+        Vector3 directionXZ = new Vector3(direction.X, 0.0f, direction.Z);
+        if (directionXZ.LengthSquared() > 0.001f)
+        {
+            directionXZ = Vector3.Normalize(directionXZ);
+            float yaw = MathF.Atan2(directionXZ.X, directionXZ.Z) * (180.0f / MathF.PI);
+
+            Rotation = new Vector3(0.0f, yaw, 0.0f);
+        }
+
+        float distanceXZ = directionXZ.Length();
+        if (distanceXZ > 0.001f)
+        {
+            float eyeLevelY = Position.Y + 1.55f;
+            float deltaY = targetPosition.Y + 1.20f - eyeLevelY;
+
+            float pitchInDegrees = MathF.Atan2(deltaY, distanceXZ) * (180.0f / MathF.PI);
+
+            pitchInDegrees = Math.Clamp(pitchInDegrees, -45.0f, 45.0f);
+
+            FighterModel.Head.Rotation = new Vector3(-pitchInDegrees, FighterModel.Head.Rotation.Y, FighterModel.Head.Rotation.Z);
+        }
     }
 
     public void MoveForward(float distance)
     {
+        if (!IsGrounded) return;
+
+        SetCrouchState(false);
+        CurrentState = IsRunning ? PlayerState.Running : PlayerState.Walking;
+
         float currentDistance = IsRunning ? distance * RunSpeedMultiplier : distance;
         float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
         Vector3 forward = Vector3.Transform(new Vector3(0, 0, 1), Matrix4x4.CreateRotationY(yawInRadians));
@@ -113,41 +219,216 @@ public class Player : IDisposable
 
     public void MoveBackward(float distance)
     {
+        if (!IsGrounded) return;
+
+        SetCrouchState(false);
+        CurrentState = IsRunning ? PlayerState.Running : PlayerState.Walking;
+
         float currentDistance = IsRunning ? distance * RunSpeedMultiplier : distance;
         float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
         Vector3 backward = Vector3.Transform(new Vector3(0, 0, -1), Matrix4x4.CreateRotationY(yawInRadians));
         Position += backward * currentDistance;
     }
 
-    public void UpdateSidestep(float deltaTime)
+    public void MoveSidewalk(float speed, bool isLeft)
     {
-        if (IsSidestepping)
+        SetCrouchState(false);
+        LookAt(OpponentPosition);
+
+        CurrentState = isLeft ? PlayerState.SideWalkingLeft : PlayerState.SideWalkingRight;
+
+        float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
+        float sideFactor = isLeft ? 1.0f : -1.0f;
+        Vector3 sideVector = Vector3.Transform(new Vector3(sideFactor, 0, 0), Matrix4x4.CreateRotationY(yawInRadians));
+
+        Position += sideVector * speed;
+    }
+
+    public void UpdateDash(float deltaTime)
+    {
+        if (IsDashing)
         {
-            Position += _sidestepVelocity * deltaTime;
-            _sidestepVelocity = Vector3.Lerp(_sidestepVelocity, Vector3.Zero, 15.0f * deltaTime);
+            Position += _dashVelocity * deltaTime;
+            _dashVelocity = Vector3.Lerp(_dashVelocity, Vector3.Zero, 8.0f * deltaTime);
+
+            if (_dashVelocity.LengthSquared() <= 0.05f)
+            {
+                _dashVelocity = Vector3.Zero;
+                if (IsGrounded && !IsAttacking)
+                {
+                    CurrentState = PlayerState.Idle;
+                }
+            }
         }
     }
 
-    public void SidestepLeft(float force = 8.0f)
+    public void ApplyDash(Vector3 localDirection, float force, PlayerState dashState)
     {
+        if (!IsGrounded) return;
+
+        SetCrouchState(false);
+        LookAt(OpponentPosition);
+
+        CurrentState = dashState;
         float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
-        Vector3 leftDirection = Vector3.Transform(new Vector3(1, 0, 0), Matrix4x4.CreateRotationY(yawInRadians));
-        _sidestepVelocity = leftDirection * force;
+        Vector3 worldDirection = Vector3.Transform(localDirection, Matrix4x4.CreateRotationY(yawInRadians));
+        _dashVelocity = worldDirection * force;
     }
 
-    public void SidestepRight(float force = 8.0f)
-    {
-        float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
-        Vector3 rightDirection = Vector3.Transform(new Vector3(-1, 0, 0), Matrix4x4.CreateRotationY(yawInRadians));
-        _sidestepVelocity = rightDirection * force;
-    }
+    public void FrontDash(float force = 12.0f) => ApplyDash(new Vector3(0, 0, 1), force, PlayerState.FrontDashing);
+    public void BackDash(float force = 12.0f) => ApplyDash(new Vector3(0, 0, -1), force, PlayerState.BackDashing);
+    public void SideDashLeft(float force = 11.0f) => ApplyDash(new Vector3(1, 0, 0), force, PlayerState.SidestepLeft);
+    public void SideDashRight(float force = 11.0f) => ApplyDash(new Vector3(-1, 0, 0), force, PlayerState.SidestepRight);
 
-    public void Jump(float jumpForce = 8.0f)
+    public void Jump(Vector3 direction, float jumpForce = 8.0f)
     {
-        if (IsGrounded)
+        if (IsGrounded && !IsAttacking)
         {
+            SetCrouchState(false);
             VelocityY = jumpForce;
             IsGrounded = false;
+
+            if (direction.Z > 0f)
+            {
+                CurrentState = PlayerState.JumpingForward;
+            }
+            else if (direction.Z < 0f)
+            {
+                CurrentState = PlayerState.JumpingBackward;
+            }
+            else
+            {
+                CurrentState = PlayerState.Jumping;
+            }
+
+            if (direction != Vector3.Zero)
+            {
+                float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
+                Vector3 worldDirection = Vector3.Transform(direction, Matrix4x4.CreateRotationY(yawInRadians));
+                Position += worldDirection * 0.25f;
+            }
+        }
+    }
+
+    public void Punch()
+    {
+        ResetDash();
+        CurrentState = PlayerState.Attacking;
+        _attackFrameCounter = 0;
+        HasHitCurrentAttack = false;
+    }
+
+    public void UpdateAttack()
+    {
+        if (!IsAttacking) return;
+
+        _attackFrameCounter++;
+
+        if (_attackFrameCounter <= TotalAttackFrames)
+        {
+            FighterModel.AnimateLeftJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+        }
+        else
+        {
+            FighterModel.ResetPose();
+            CurrentState = PlayerState.Idle;
+            _attackFrameCounter = 0;
+            HasHitCurrentAttack = false;
+        }
+    }
+
+    public bool IsAttackInActiveFrames()
+    {
+        return IsAttacking &&
+               _attackFrameCounter > StartupFrames &&
+               _attackFrameCounter <= (StartupFrames + ActiveFrames);
+    }
+
+    public (Vector3 position, float radius) GetPunchHitbox()
+    {
+        float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
+        Vector3 forward = Vector3.Transform(new Vector3(0, 0, 1), Matrix4x4.CreateRotationY(yawInRadians));
+
+        Vector3 punchPosition = Position + (forward * 0.8f) + new Vector3(0, 1.2f, 0);
+        float punchRadius = 0.17f;
+
+        return (punchPosition, punchRadius);
+    }
+
+    public void UpdateAnimations(float deltaTime)
+    {
+        if (IsAttacking)
+        {
+            UpdateAttack();
+            return;
+        }
+
+        if (!IsGrounded || CurrentState == PlayerState.Jumping || CurrentState == PlayerState.JumpingForward || CurrentState == PlayerState.JumpingBackward || CurrentState == PlayerState.Falling || CurrentState == PlayerState.Rising)
+        {
+            FighterModel.AnimateJump();
+            return;
+        }
+
+        if (CurrentState == PlayerState.Crouching)
+        {
+            FighterModel.AnimateCrouch();
+            return;
+        }
+
+        if (CurrentState == PlayerState.FrontDashing)
+        {
+            FighterModel.AnimateFrontDash();
+            return;
+        }
+
+        if (CurrentState == PlayerState.BackDashing)
+        {
+            FighterModel.AnimateBackDash();
+            return;
+        }
+
+        if (CurrentState == PlayerState.SidestepLeft || CurrentState == PlayerState.SideWalkingLeft)
+        {
+            FighterModel.AnimateSidestep(isLeft: true);
+            return;
+        }
+
+        if (CurrentState == PlayerState.SidestepRight || CurrentState == PlayerState.SideWalkingRight)
+        {
+            FighterModel.AnimateSidestep(isLeft: false);
+            return;
+        }
+
+        if (CurrentState == PlayerState.Defending)
+        {
+            FighterModel.AnimateDefending();
+            return;
+        }
+
+        if (CurrentState == PlayerState.Hit)
+        {
+            FighterModel.AnimateHit();
+            return;
+        }
+
+        if (CurrentState == PlayerState.Downed || CurrentState == PlayerState.KnockedOut)
+        {
+            FighterModel.AnimateKnockedOut();
+            return;
+        }
+
+        if (CurrentState == PlayerState.Walking || CurrentState == PlayerState.Running)
+        {
+            _walkTimeTimer += deltaTime;
+            float animSpeed = CurrentState == PlayerState.Running ? 16.0f : 10.0f;
+
+            FighterModel.AnimateWalk(_walkTimeTimer, animSpeed);
+        }
+        else
+        {
+            _walkTimeTimer = 0.0f;
+            _idleTimeTimer += deltaTime;
+            FighterModel.AnimateIdle(_idleTimeTimer);
         }
     }
 

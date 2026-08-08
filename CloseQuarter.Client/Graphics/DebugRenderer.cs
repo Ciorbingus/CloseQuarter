@@ -1,7 +1,7 @@
 using Silk.NET.OpenGL;
 using System.Numerics;
 
-using CloseQuarter.Client.Managers; 
+using CloseQuarter.Client.Models;
 
 namespace CloseQuarter.Client.Graphics;
 
@@ -75,13 +75,12 @@ public class DebugRenderer : IDisposable
             _gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), (void*)0);
         }
 
-        float h = PhysicsManager.PlayerHeight; 
         float[] verticalLines = new float[]
         {
-            0.0f, 0.0f, 1.0f,   0.0f, h, 1.0f,
-            0.0f, 0.0f, -1.0f,  0.0f, h, -1.0f,
-            1.0f, 0.0f, 0.0f,   1.0f, h, 0.0f,
-            -1.0f, 0.0f, 0.0f,  -1.0f, h, 0.0f
+            0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, -1.0f,  0.0f, 1.0f, -1.0f,
+            1.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f,
+            -1.0f, 0.0f, 0.0f,  -1.0f, 1.0f, 0.0f
         };
 
         _vaoVerticals = _gl.GenVertexArray();
@@ -104,13 +103,15 @@ public class DebugRenderer : IDisposable
         _gl.BindVertexArray(0);
     }
 
-    public void DrawPlayerHitbox(MyShader shader, Matrix4x4 playerBodyMatrix, float radius, Matrix4x4 view, Matrix4x4 projection)
+    public void DrawPlayerHitbox(MyShader shader, Player player, Matrix4x4 view, Matrix4x4 projection)
     {
         shader.Use();
         shader.SetUniform("uView", view);
         shader.SetUniform("uProjection", projection);
 
-        float height = PhysicsManager.PlayerHeight;
+        Matrix4x4 playerBodyMatrix = player.GetBodyMatrix();
+        float radius = player.Radius;
+        float height = player.Height;
 
         _gl.BindVertexArray(_vaoCircle);
 
@@ -125,23 +126,48 @@ public class DebugRenderer : IDisposable
         _gl.DrawArrays(PrimitiveType.LineLoop, 0, (uint)_circleVertexCount);
 
         Matrix4x4 topCircle = Matrix4x4.CreateScale(radius, 1.0f, radius) * 
-                            Matrix4x4.CreateTranslation(0.0f, height, 0.0f) * 
-                            playerBodyMatrix;
+                              Matrix4x4.CreateTranslation(0.0f, height, 0.0f) * 
+                              playerBodyMatrix;
         shader.SetUniform("uModel", topCircle);
         _gl.DrawArrays(PrimitiveType.LineLoop, 0, (uint)_circleVertexCount);
 
-
-        Matrix4x4 cylinderModel = Matrix4x4.CreateScale(radius, 1.0f, radius) * playerBodyMatrix;
+        Matrix4x4 cylinderModel = Matrix4x4.CreateScale(radius, height, radius) * playerBodyMatrix;
         shader.SetUniform("uModel", cylinderModel);
 
         _gl.BindVertexArray(_vaoVerticals);
         _gl.DrawArrays(PrimitiveType.Lines, 0, 8);
 
-
         shader.SetUniform("uModel", playerBodyMatrix);
 
         _gl.BindVertexArray(_vaoLine);
         _gl.DrawArrays(PrimitiveType.Lines, 0, 2);
+
+        _gl.BindVertexArray(0);
+    }
+
+    public void DrawPunchHitbox(MyShader shader, Vector3 position, float radius, Matrix4x4 view, Matrix4x4 projection)
+    {
+        shader.Use();
+        shader.SetUniform("uView", view);
+        shader.SetUniform("uProjection", projection);
+
+        _gl.BindVertexArray(_vaoCircle);
+
+        Matrix4x4 xzCircle = Matrix4x4.CreateScale(radius, 1.0f, radius) * Matrix4x4.CreateTranslation(position);
+        shader.SetUniform("uModel", xzCircle);
+        _gl.DrawArrays(PrimitiveType.LineLoop, 0, (uint)_circleVertexCount);
+
+        Matrix4x4 xyCircle = Matrix4x4.CreateScale(radius, 1.0f, radius) * 
+                             Matrix4x4.CreateRotationX(MathF.PI / 2.0f) * 
+                             Matrix4x4.CreateTranslation(position);
+        shader.SetUniform("uModel", xyCircle);
+        _gl.DrawArrays(PrimitiveType.LineLoop, 0, (uint)_circleVertexCount);
+
+        Matrix4x4 yzCircle = Matrix4x4.CreateScale(radius, 1.0f, radius) * 
+                             Matrix4x4.CreateRotationZ(MathF.PI / 2.0f) * 
+                             Matrix4x4.CreateTranslation(position);
+        shader.SetUniform("uModel", yzCircle);
+        _gl.DrawArrays(PrimitiveType.LineLoop, 0, (uint)_circleVertexCount);
 
         _gl.BindVertexArray(0);
     }

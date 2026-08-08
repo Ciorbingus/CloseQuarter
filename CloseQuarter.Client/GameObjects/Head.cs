@@ -15,9 +15,7 @@ public class Head : IDisposable
     public Vector3 Position { get; set; } = Vector3.Zero;
     public Vector3 Rotation { get; set; } = Vector3.Zero;
 
-
-    public Vector3 PivotPoint { get; set; } = Vector3.Zero;
-
+    public Vector3 PivotPoint { get; set; } = new Vector3(0.0f, -0.15f, 0.0f);
 
     public Head(GL gl)
     {
@@ -34,9 +32,15 @@ public class Head : IDisposable
     {
         _headTexture?.Bind(TextureUnit.Texture0);
 
-        Matrix4x4 headMatrix = Matrix4x4.CreateRotationX(Rotation.X) *
-                               Matrix4x4.CreateRotationY(Rotation.Y) *
-                               Matrix4x4.CreateRotationZ(Rotation.Z) *
+        float rotX = Rotation.X * (MathF.PI / 180.0f);
+        float rotY = Rotation.Y * (MathF.PI / 180.0f);
+        float rotZ = Rotation.Z * (MathF.PI / 180.0f);
+
+        Matrix4x4 headMatrix = Matrix4x4.CreateTranslation(-PivotPoint) *
+                               Matrix4x4.CreateRotationX(rotX) *
+                               Matrix4x4.CreateRotationY(rotY) *
+                               Matrix4x4.CreateRotationZ(rotZ) *
+                               Matrix4x4.CreateTranslation(PivotPoint) *
                                Matrix4x4.CreateTranslation(Position) * parentMatrix;
 
         RenderPiece(Skull, headMatrix, shader, view, projection);

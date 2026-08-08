@@ -7,7 +7,6 @@ using Silk.NET.Input;
 using CloseQuarter.Client.Managers;
 using CloseQuarter.Client.Screens;
 
-
 namespace CloseQuarter.Client;
 
 class Program
@@ -15,7 +14,8 @@ class Program
     private static IWindow _window = null!;
     private static GL _gl = null!;
     public static ImGuiController ImGuiController { get; private set; } = null!;
-    private static IInputContext _inputContext = null!;
+    
+    public static IInputContext InputContext { get; private set; } = null!;
 
     static void Main(string[] args)
     {
@@ -52,9 +52,9 @@ class Program
         _gl = _window.CreateOpenGL();
         _gl.Enable(EnableCap.DepthTest);
 
-        _inputContext = _window.CreateInput();
+        InputContext = _window.CreateInput();
 
-        ImGuiController = new ImGuiController(_gl, _window, _inputContext);
+        ImGuiController = new ImGuiController(_gl, _window, InputContext);
 
         ScreenManager.Initialize(_gl, _window);
         ScreenManager.ChangeScreen(new MainMenuScreen());
@@ -90,7 +90,7 @@ class Program
         ScreenManager.CurrentScreen?.OnUnload();
         
         ImGuiController?.Dispose();
-        _inputContext?.Dispose();
+        InputContext?.Dispose();
 
         AudioManager.Shutdown();
     }
