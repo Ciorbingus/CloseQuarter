@@ -104,8 +104,8 @@ public class TestScreen : Screen
             {
                 _player1.Position = _player1Position;
                 _player1.Rotation = _player1Rotation;
-                _player1.PunchKey = Key.B;
-            }
+                _player1.PunchKey = Key.Z;     
+                _player1.RightPunchKey = Key.X;            }
         }
         catch (Exception ex)
         {
@@ -470,6 +470,9 @@ public class TestScreen : Screen
         ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 350 - 50);
         ImGui.ProgressBar(_p2Health / 100f, new Vector2(350, 22), $"{_p2Health:F0} HP");
         ImGui.PopStyleColor();
+
+        _p1Input.DrawInputHistoryUI("P1 Inputs", new Vector2(20, 100));
+
         ImGui.End();
     }
 

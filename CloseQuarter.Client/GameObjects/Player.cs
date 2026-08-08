@@ -31,6 +31,15 @@ public enum PlayerState
     KnockedOut
 }
 
+
+public enum AttackType
+{
+    None,
+    LeftPunch,
+    RightPunchHigh
+}
+
+
 public class Player : IDisposable
 {
     public Fighter FighterModel { get; private set; }
@@ -62,7 +71,8 @@ public class Player : IDisposable
     public Key LeftKey { get; private set; } = Key.Up;
     public Key RightKey { get; private set; } = Key.Down;
 
-    public Key PunchKey { get; set; } = Key.B;
+    public Key PunchKey { get; set; } = Key.Z;      
+    public Key RightPunchKey { get; set; } = Key.X;
 
     public bool IsAttacking => CurrentState == PlayerState.Attacking;
     public bool HasHitCurrentAttack { get; set; } = false;
@@ -75,6 +85,9 @@ public class Player : IDisposable
 
     private float _walkTimeTimer = 0.0f;
     private float _idleTimeTimer = 0.0f;
+
+
+    public AttackType CurrentAttackType { get; private set; } = AttackType.None;
 
     public Player(GL gl)
     {
@@ -310,10 +323,20 @@ public class Player : IDisposable
         }
     }
 
-    public void Punch()
+    public void PunchLeft()
     {
         ResetDash();
         CurrentState = PlayerState.Attacking;
+        CurrentAttackType = AttackType.LeftPunch;
+        _attackFrameCounter = 0;
+        HasHitCurrentAttack = false;
+    }
+
+    public void PunchRightHigh()
+    {
+        ResetDash();
+        CurrentState = PlayerState.Attacking;
+        CurrentAttackType = AttackType.RightPunchHigh;
         _attackFrameCounter = 0;
         HasHitCurrentAttack = false;
     }
@@ -326,16 +349,25 @@ public class Player : IDisposable
 
         if (_attackFrameCounter <= TotalAttackFrames)
         {
-            FighterModel.AnimateLeftJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+            if (CurrentAttackType == AttackType.RightPunchHigh)
+            {
+                FighterModel.AnimateRightStraight(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+            }
+            else
+            {
+                FighterModel.AnimateLeftJab(_attackFrameCounter, StartupFrames, ActiveFrames, RecoveryFrames);
+            }
         }
         else
         {
             FighterModel.ResetPose();
             CurrentState = PlayerState.Idle;
+            CurrentAttackType = AttackType.None;
             _attackFrameCounter = 0;
             HasHitCurrentAttack = false;
         }
     }
+
 
     public bool IsAttackInActiveFrames()
     {
@@ -349,8 +381,10 @@ public class Player : IDisposable
         float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
         Vector3 forward = Vector3.Transform(new Vector3(0, 0, 1), Matrix4x4.CreateRotationY(yawInRadians));
 
-        Vector3 punchPosition = Position + (forward * 0.8f) + new Vector3(0, 1.2f, 0);
-        float punchRadius = 0.17f;
+        float yPos = CurrentAttackType == AttackType.RightPunchHigh ? 1.55f : 1.20f;
+        Vector3 punchPosition = Position + (forward * 0.85f) + new Vector3(0, yPos, 0);
+
+        float punchRadius = CurrentAttackType == AttackType.RightPunchHigh ? 0.22f : 0.17f;
 
         return (punchPosition, punchRadius);
     }

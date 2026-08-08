@@ -372,6 +372,47 @@ public class Fighter : IDisposable
         }
     }
 
+
+    public void AnimateRightStraight(int currentFrame, int startupFrames, int activeFrames, int recoveryFrames)
+    {
+        int totalFrames = startupFrames + activeFrames + recoveryFrames;
+        float progress = 0.0f;
+
+        if (currentFrame <= startupFrames)
+        {
+            progress = (float)currentFrame / startupFrames;
+
+            RightArm.ShoulderRotation = new Vector3(Lerp(-50f, -95f, progress), Lerp(-25f, -10f, progress), 0f);
+            RightArm.LowerArmRotation = new Vector3(Lerp(-90f, -5f, progress), 0f, 0f);
+
+            LeftArm.ShoulderRotation = new Vector3(-55f, 20f, 0f);
+            LeftArm.LowerArmRotation = new Vector3(-85f, 0f, 0f);
+
+            Torso.AbdomenRotation = new Vector3(12f, Lerp(15f, -25f, progress), 0f);
+            Torso.ChestRotation = new Vector3(10f, Lerp(10f, -20f, progress), 0f);
+            Head.Rotation = new Vector3(-15f, Lerp(-5f, 10f, progress), 0f);
+        }
+        else if (currentFrame <= startupFrames + activeFrames)
+        {
+            RightArm.ShoulderRotation = new Vector3(-95f, -10f, 0f);
+            RightArm.LowerArmRotation = new Vector3(-5f, 0f, 0f);
+
+            Torso.AbdomenRotation = new Vector3(12f, -25f, 0f);
+            Torso.ChestRotation = new Vector3(10f, -20f, 0f);
+        }
+        else if (currentFrame <= totalFrames)
+        {
+            progress = 1.0f - ((float)(currentFrame - startupFrames - activeFrames) / recoveryFrames);
+
+            RightArm.ShoulderRotation = new Vector3(Lerp(-50f, -95f, progress), Lerp(-25f, -10f, progress), 0f);
+            RightArm.LowerArmRotation = new Vector3(Lerp(-90f, -5f, progress), 0f, 0f);
+
+            Torso.AbdomenRotation = new Vector3(12f, Lerp(15f, -25f, progress), 0f);
+            Torso.ChestRotation = new Vector3(10f, Lerp(10f, -20f, progress), 0f);
+        }
+    }
+
+
     public void ResetPose()
     {
         LeftArm.ShoulderRotation = Vector3.Zero;
