@@ -38,12 +38,6 @@ public class TestScreen : Screen
     private Player? _player2;
     private MyShader? _playerShader;
 
-    private String _p1TexturePath = "Textures/player.png";
-    private String _p2TexturePath = "Textures/player.png";
-
-    private String _faceTexturePath1 = "Textures/player_face.png";
-    private String _faceTexturePath2 = "Textures/player2_face.png";
-
     private Vector3 _player1Position = new Vector3(-2.5f, 0.0f, 0f);
     private Vector3 _player2Position = new Vector3(2.5f, 0.0f, 0f);
 
@@ -97,16 +91,16 @@ public class TestScreen : Screen
 
         try
         {
-            _player1 = Player.CreateFromRoster(Gl, "toma");
-            _player1.LoadTextures(Gl, _p1TexturePath, _faceTexturePath1);
+            _player1 = Player.CreateFromRoster(Gl, "bobi");
             _playerShader = MyShader.FromFiles(Gl, "Shaders/player.vert", "Shaders/player.frag");
 
-            if (_player1 != null && _playerShader != null && _camera != null)
+            if (_player1 != null)
             {
                 _player1.Position = _player1Position;
                 _player1.Rotation = _player1Rotation;
                 _player1.PunchKey = Key.Z;     
-                _player1.RightPunchKey = Key.X;            }
+                _player1.RightPunchKey = Key.X;
+            }
         }
         catch (Exception ex)
         {
@@ -115,14 +109,12 @@ public class TestScreen : Screen
 
         try
         {
-            _player2 = Player.CreateFromRoster(Gl, "toma");             
-            _player2.LoadTextures(Gl, _p2TexturePath, _faceTexturePath2);
+            _player2 = Player.CreateFromRoster(Gl, "toma");
 
-            if (_player2 != null && _playerShader != null && _camera != null)
+            if (_player2 != null)
             {
                 _player2.Position = _player2Position;
                 _player2.Rotation = _player2Rotation;
-                //_player2.PunchKey = Key.F;
             }
         }
         catch (Exception ex)
@@ -194,6 +186,7 @@ public class TestScreen : Screen
                 {
                     _player1.UpdateAnimations(FixedDeltaTime);
                     _player1.UpdateDash(FixedDeltaTime);
+                    _player1.UpdatePhysicsAndKnockback(FixedDeltaTime);
                     PhysicsManager.ApplyGravityAndFloor(_player1, FixedDeltaTime);
                     PhysicsManager.KeepPlayerInRing(_player1);
                 }
@@ -202,6 +195,7 @@ public class TestScreen : Screen
                 {
                     _player2.UpdateAnimations(FixedDeltaTime);
                     _player2.UpdateDash(FixedDeltaTime);
+                    _player2.UpdatePhysicsAndKnockback(FixedDeltaTime);
                     PhysicsManager.ApplyGravityAndFloor(_player2, FixedDeltaTime);
                     PhysicsManager.KeepPlayerInRing(_player2);
                 }
@@ -213,8 +207,17 @@ public class TestScreen : Screen
                     {
                         float damage = _player1.GetAttackDamage();
                         _p2Health -= damage;
-                        _player2.CurrentState = PlayerState.Hit;
                         _player1.HasHitCurrentAttack = true;
+
+                        if (_player1.CurrentAttackType == AttackType.RP2)
+                        {
+                            PhysicsManager.ApplyDirectionalKnockdown(_player1, _player2, knockbackForce: 7.0f);
+                        }
+                        else
+                        {
+                            _player2.CurrentState = PlayerState.Hit;
+                        }
+
                         AudioManager.PlaySFX(_soundEffect, 0.4f);
                     }
                 }
@@ -224,10 +227,19 @@ public class TestScreen : Screen
                     var (punchPos, punchRadius) = _player2.GetPunchHitbox();
                     if (PhysicsManager.CheckPunchHit(punchPos, punchRadius, _player1))
                     {
-                        float damage =_player2.GetAttackDamage();
+                        float damage = _player2.GetAttackDamage();
                         _p1Health -= damage;
-                        _player1.CurrentState = PlayerState.Hit;
                         _player2.HasHitCurrentAttack = true;
+
+                        if (_player2.CurrentAttackType == AttackType.RP2)
+                        {
+                            PhysicsManager.ApplyDirectionalKnockdown(_player2, _player1, knockbackForce: 7.0f);
+                        }
+                        else
+                        {
+                            _player1.CurrentState = PlayerState.Hit;
+                        }
+
                         AudioManager.PlaySFX(_soundEffect, 0.4f);
                     }
                 }
@@ -342,7 +354,7 @@ public class TestScreen : Screen
         _player2?.ResetDash();
 
         _p1Input.Reset();
-
+        _p2Input.Reset();
 
         _camera?.Position = new Vector3(0.0f, 5.0f, 15.0f);
     }
@@ -425,8 +437,9 @@ public class TestScreen : Screen
         ImGui.SetNextWindowPos(new Vector2(20, 20));
         ImGui.SetNextWindowSize(new Vector2(400, 70));
         ImGui.Begin("P1_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
-        string p1Label = _player1?.DisplayName.ToUpper() ?? "PLAYER 1";
-        ImGui.TextColored(new Vector4(0.1f, 0.1f, 0.1f, 1.0f), p1Label);
+
+        string p1Name = _player1?.DisplayName.ToUpper() ?? "PLAYER 1";
+        ImGui.TextColored(new Vector4(0.2f, 0.8f, 1.0f, 1.0f), p1Name);
 
         if (_p1Health < 25f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
@@ -466,7 +479,7 @@ public class TestScreen : Screen
         string p2Label = _player2?.DisplayName.ToUpper() ?? "PLAYER 2";
         float posX = ImGui.GetWindowWidth() - ImGui.CalcTextSize(p2Label).X - 50;
         ImGui.SetCursorPosX(posX);
-        ImGui.TextColored(new Vector4(0.3f, 0.3f, 0.3f, 1.0f), p2Label);
+        ImGui.TextColored(new Vector4(1.0f, 0.3f, 0.3f, 1.0f), p2Label);
 
         if (_p2Health < 25f)
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));

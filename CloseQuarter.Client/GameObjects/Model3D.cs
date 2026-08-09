@@ -47,8 +47,6 @@ public class Model3D : IDisposable
             Head.LoadTextures(gl, bodyTexturePath);
     }
 
-    // --- ANIMAȚII GENERICE DE BAZĂ ---
-
     public virtual void AnimateIdle(float idleTime)
     {
         float pulse = MathF.Sin(idleTime * 6.0f);
@@ -292,6 +290,67 @@ public class Model3D : IDisposable
         RightLeg.UpperLegRotation = new Vector3(10.0f, 0.0f, 15.0f);
         RightLeg.LowerLegRotation = new Vector3(5.0f, 0.0f, 0.0f);
         RightLeg.FootRotation = new Vector3(-15.0f, 0.0f, -15.0f);
+    }
+
+    public virtual void AnimateDownedFaceUp()
+    {
+        Torso.AbdomenRotation = new Vector3(-90.0f, 0.0f, 0.0f);
+        Torso.ChestRotation = new Vector3(5.0f, 0.0f, 0.0f);
+        Head.Rotation = new Vector3(15.0f, 0.0f, 0.0f);
+
+        LeftArm.ShoulderRotation = new Vector3(20.0f, 40.0f, 10.0f);
+        LeftArm.LowerArmRotation = new Vector3(-15.0f, 0.0f, 0.0f);
+
+        RightArm.ShoulderRotation = new Vector3(20.0f, -40.0f, -10.0f);
+        RightArm.LowerArmRotation = new Vector3(-15.0f, 0.0f, 0.0f);
+
+        LeftLeg.UpperLegRotation = new Vector3(5.0f, 0.0f, -10.0f);
+        LeftLeg.LowerLegRotation = new Vector3(10.0f, 0.0f, 0.0f);
+        LeftLeg.FootRotation = new Vector3(-10.0f, 0.0f, 10.0f);
+
+        RightLeg.UpperLegRotation = new Vector3(5.0f, 0.0f, 10.0f);
+        RightLeg.LowerLegRotation = new Vector3(10.0f, 0.0f, 0.0f);
+        RightLeg.FootRotation = new Vector3(-10.0f, 0.0f, -10.0f);
+    }
+
+    public virtual void AnimateDownedFaceDown()
+    {
+        Torso.AbdomenRotation = new Vector3(90.0f, 0.0f, 0.0f);
+        Torso.ChestRotation = new Vector3(-5.0f, 0.0f, 0.0f);
+        Head.Rotation = new Vector3(-20.0f, 15.0f, 0.0f);
+
+        LeftArm.ShoulderRotation = new Vector3(-160.0f, 20.0f, 0.0f);
+        LeftArm.LowerArmRotation = new Vector3(-45.0f, 0.0f, 0.0f);
+
+        RightArm.ShoulderRotation = new Vector3(-150.0f, -20.0f, 0.0f);
+        RightArm.LowerArmRotation = new Vector3(-60.0f, 0.0f, 0.0f);
+
+        LeftLeg.UpperLegRotation = new Vector3(-5.0f, 0.0f, -5.0f);
+        LeftLeg.LowerLegRotation = new Vector3(15.0f, 0.0f, 0.0f);
+        LeftLeg.FootRotation = new Vector3(10.0f, 0.0f, 5.0f);
+
+        RightLeg.UpperLegRotation = new Vector3(-10.0f, 0.0f, 5.0f);
+        RightLeg.LowerLegRotation = new Vector3(10.0f, 0.0f, 0.0f);
+        RightLeg.FootRotation = new Vector3(10.0f, 0.0f, -5.0f);
+    }
+
+    public virtual void AnimateGettingUp(float progress)
+    {
+        float pitch = Lerp(-85.0f, 0.0f, progress);
+        float kneeFlex = Lerp(60.0f, 0.0f, progress);
+
+        Torso.AbdomenRotation = new Vector3(pitch, 0.0f, 0.0f);
+        Torso.ChestRotation = new Vector3(10.0f * (1.0f - progress), 0.0f, 0.0f);
+        Head.Rotation = new Vector3(-10.0f, 0.0f, 0.0f);
+
+        LeftLeg.UpperLegRotation = new Vector3(-kneeFlex, 0.0f, 0.0f);
+        LeftLeg.LowerLegRotation = new Vector3(kneeFlex, 0.0f, 0.0f);
+
+        RightLeg.UpperLegRotation = new Vector3(-kneeFlex * 0.5f, 0.0f, 0.0f);
+        RightLeg.LowerLegRotation = new Vector3(kneeFlex * 0.8f, 0.0f, 0.0f);
+
+        LeftArm.ShoulderRotation = new Vector3(Lerp(20.0f, -55.0f, progress), 20.0f, 0.0f);
+        RightArm.ShoulderRotation = new Vector3(Lerp(20.0f, -45.0f, progress), -25.0f, 0.0f);
     }
 
     public void ResetPose()

@@ -35,7 +35,7 @@ public static class PhysicsManager
         {
             player.IsGrounded = false;
 
-            if (!player.IsAttacking && player.CurrentState != PlayerState.Hit && player.CurrentState != PlayerState.KnockedOut)
+            if (!player.IsAttacking && player.CurrentState != PlayerState.Hit && player.CurrentState != PlayerState.KnockedOut && !player.IsDowned)
             {
                 if (player.VelocityY < 0.0f)
                 {
@@ -110,6 +110,27 @@ public static class PhysicsManager
                 }
             }
         }
+    }
+
+    public static void ApplyDirectionalKnockdown(Player attacker, Player defender, float knockbackForce = 6.0f)
+    {
+        Vector3 hitDirection = Vector3.Normalize(defender.Position - attacker.Position);
+        float yawInRadians = defender.Rotation.Y * (MathF.PI / 180.0f);
+        Vector3 defenderForward = Vector3.Transform(new Vector3(0, 0, 1), Matrix4x4.CreateRotationY(yawInRadians));
+
+        float dot = Vector3.Dot(hitDirection, defenderForward);
+
+        if (dot >= 0f)
+        {
+            defender.CurrentState = PlayerState.DownedFaceDown;
+        }
+        else
+        {
+            defender.CurrentState = PlayerState.DownedFaceUp;
+
+        }
+
+        defender.ApplyKnockback(hitDirection, knockbackForce);
     }
 
     public static bool CheckPunchHit(Vector3 punchPos, float punchRadius, Player defender)

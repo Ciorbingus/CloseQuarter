@@ -26,6 +26,9 @@ public enum PlayerState
     Attacking,
     Defending,
     Downed,
+    DownedFaceUp,
+    DownedFaceDown,
+    GettingUp,
     Hit,
     KnockedOut
 }
@@ -42,7 +45,7 @@ public enum AttackType
 public class Player : IDisposable
 {
     public string DisplayName { get; set; } = "Player";
-    public Model3D FighterModel { get; private set; } 
+    public Model3D FighterModel { get; private set; }
     public IMoveset Moveset { get; set; }
 
     public const float NormalHeight = 1.8f;
@@ -63,6 +66,11 @@ public class Player : IDisposable
     public PlayerState PreviousState { get; set; } = PlayerState.Idle;
 
     private Vector3 _dashVelocity = Vector3.Zero;
+    private Vector3 _knockbackVelocity = Vector3.Zero;
+
+    private float _getUpTimer = 0.0f;
+    private const float GetUpDuration = 0.6f;
+
     public bool IsDashing => _dashVelocity.LengthSquared() > 0.01f;
 
     public Vector3 OpponentPosition { get; set; } = Vector3.Zero;
@@ -130,7 +138,14 @@ public class Player : IDisposable
         }
     }
 
-    public bool IsAnimationLocked => IsAttacking || CurrentState == PlayerState.Hit || CurrentState == PlayerState.KnockedOut;
+    public bool IsAnimationLocked => IsAttacking || 
+                                     CurrentState == PlayerState.Hit || 
+                                     CurrentState == PlayerState.DownedFaceUp || 
+                                     CurrentState == PlayerState.DownedFaceDown || 
+                                     CurrentState == PlayerState.GettingUp || 
+                                     CurrentState == PlayerState.KnockedOut;
+
+    public bool IsDowned => CurrentState == PlayerState.DownedFaceUp || CurrentState == PlayerState.DownedFaceDown;
 
     public bool CanCancelCurrentState(PlayerState newState)
     {
@@ -152,7 +167,7 @@ public class Player : IDisposable
     {
         if (isCrouching)
         {
-            if (CurrentState != PlayerState.Jumping && CurrentState != PlayerState.Falling && !IsAttacking)
+            if (CurrentState != PlayerState.Jumping && CurrentState != PlayerState.Falling && !IsAttacking && !IsDowned)
             {
                 CurrentState = PlayerState.Crouching;
                 Height = CrouchHeight;
@@ -180,7 +195,10 @@ public class Player : IDisposable
         float rotZ = Rotation.Z * (MathF.PI / 180.0f);
 
         float yOffset = CurrentState == PlayerState.Crouching ? -0.4f : 0.0f;
-        if (CurrentState == PlayerState.Downed || CurrentState == PlayerState.KnockedOut)
+        if (CurrentState == PlayerState.Downed || 
+            CurrentState == PlayerState.DownedFaceUp || 
+            CurrentState == PlayerState.DownedFaceDown || 
+            CurrentState == PlayerState.KnockedOut)
         {
             yOffset = -0.85f;
         }
@@ -201,6 +219,8 @@ public class Player : IDisposable
 
     public void LookAt(Vector3 targetPosition)
     {
+        if (IsDowned) return;
+
         Vector3 direction = targetPosition - Position;
 
         Vector3 directionXZ = new Vector3(direction.X, 0.0f, direction.Z);
@@ -226,9 +246,52 @@ public class Player : IDisposable
         }
     }
 
+    public void ApplyKnockback(Vector3 direction, float force)
+    {
+        direction.Y = 0;
+        if (direction.LengthSquared() > 0.001f)
+        {
+            direction = Vector3.Normalize(direction);
+        }
+        _knockbackVelocity = direction * force;
+    }
+
+    public void TriggerGettingUp()
+    {
+        if (IsDowned)
+        {
+            CurrentState = PlayerState.GettingUp;
+            _getUpTimer = 0.0f;
+        }
+    }
+
+    public void UpdatePhysicsAndKnockback(float deltaTime)
+    {
+        if (_knockbackVelocity.LengthSquared() > 0.01f)
+        {
+            Position += _knockbackVelocity * deltaTime;
+            _knockbackVelocity = Vector3.Lerp(_knockbackVelocity, Vector3.Zero, 10.0f * deltaTime);
+            if (_knockbackVelocity.LengthSquared() <= 0.01f)
+            {
+                _knockbackVelocity = Vector3.Zero;
+            }
+        }
+
+        if (CurrentState == PlayerState.GettingUp)
+        {
+            _getUpTimer += deltaTime;
+            if (_getUpTimer >= GetUpDuration)
+            {
+                _getUpTimer = 0.0f;
+                FighterModel.ResetPose();
+                CurrentState = PlayerState.Idle;
+            }
+        }
+    }
+
     public void MoveForward(float distance)
     {
-        if (!IsGrounded) return;
+        if (!IsGrounded || IsAnimationLocked) return;
 
         SetCrouchState(false);
         CurrentState = IsRunning ? PlayerState.Running : PlayerState.Walking;
@@ -241,7 +304,7 @@ public class Player : IDisposable
 
     public void MoveBackward(float distance)
     {
-        if (!IsGrounded) return;
+        if (!IsGrounded || IsAnimationLocked) return;
 
         SetCrouchState(false);
         CurrentState = IsRunning ? PlayerState.Running : PlayerState.Walking;
@@ -254,6 +317,8 @@ public class Player : IDisposable
 
     public void MoveSidewalk(float speed, bool isLeft)
     {
+        if (IsAnimationLocked) return;
+
         SetCrouchState(false);
         LookAt(OpponentPosition);
 
@@ -270,7 +335,7 @@ public class Player : IDisposable
 
     public void ApplyDash(Vector3 localDirection, float force, PlayerState dashState)
     {
-        if (!IsGrounded) return;
+        if (!IsGrounded || IsAnimationLocked) return;
 
         SetCrouchState(false);
         LookAt(OpponentPosition);
@@ -368,7 +433,7 @@ public class Player : IDisposable
 
     public void Jump(Vector3 direction, float jumpForce = 8.0f)
     {
-        if (IsGrounded && !IsAttacking)
+        if (IsGrounded && !IsAttacking && !IsDowned)
         {
             SetCrouchState(false);
             VelocityY = jumpForce;
@@ -403,6 +468,8 @@ public class Player : IDisposable
 
     private void TriggerAttack(AttackType attack)
     {
+        if (IsDowned) return;
+
         ResetDash();
         CurrentState = PlayerState.Attacking;
         CurrentAttackType = attack;
@@ -452,6 +519,25 @@ public class Player : IDisposable
         if (IsAttacking)
         {
             UpdateAttack();
+            return;
+        }
+
+        if (CurrentState == PlayerState.DownedFaceUp)
+        {
+            FighterModel.AnimateDownedFaceUp();
+            return;
+        }
+
+        if (CurrentState == PlayerState.DownedFaceDown)
+        {
+            FighterModel.AnimateDownedFaceDown();
+            return;
+        }
+
+        if (CurrentState == PlayerState.GettingUp)
+        {
+            float progress = _getUpTimer / GetUpDuration;
+            FighterModel.AnimateGettingUp(progress);
             return;
         }
 

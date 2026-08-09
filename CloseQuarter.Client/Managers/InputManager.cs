@@ -186,6 +186,15 @@ public class InputManager
         InputFlags currentFlags = ReadInputFlags(player, punchTriggered, rightPunchTriggered);
         History.AddFrame(currentFlags, currentTime);
 
+        if (player.IsDowned)
+        {
+            if (currentFlags.HasFlag(InputFlags.Up))
+            {
+                player.TriggerGettingUp();
+            }
+            return;
+        }
+
         if (punchTriggered || rightPunchTriggered)
         {
             if (player.Moveset.ProcessAttackInput(player, History, punchTriggered, rightPunchTriggered, currentTime))
@@ -194,7 +203,7 @@ public class InputManager
             }
         }
 
-        if (player.IsAttacking)
+        if (player.IsAttacking || player.CurrentState == PlayerState.GettingUp)
         {
             return;
         }
