@@ -153,7 +153,7 @@ public class InputManager
         History.Clear();
     }
 
-    public void ProcessInput(Player player, float currentTime)
+    public void ProcessInput(Player player, Vector3 cameraPosition, float currentTime)
     {
         bool isPunchDown = _keyboard != null && _keyboard.IsKeyPressed(player.PunchKey);
         bool isRightPunchDown = _keyboard != null && _keyboard.IsKeyPressed(player.RightPunchKey);
@@ -214,25 +214,25 @@ public class InputManager
         {
             if (forwardTriggered && (currentTime - _lastForwardReleaseTime <= DoubleTapThreshold))
             {
-                player.FrontDash();
+                player.FrontDash(cameraPosition);
                 _lastDashTime = currentTime;
                 return;
             }
             else if (backwardTriggered && (currentTime - _lastBackwardReleaseTime <= DoubleTapThreshold))
             {
-                player.BackDash();
+                player.BackDash(cameraPosition);
                 _lastDashTime = currentTime;
                 return;
             }
             else if (upTriggered && (currentTime - _lastUpReleaseTime <= DoubleTapThreshold))
             {
-                player.SideDashRight();
+                player.SideDashRight(cameraPosition);
                 _lastDashTime = currentTime;
                 return;
             }
             else if (downTriggered && (currentTime - _lastDownReleaseTime <= DoubleTapThreshold))
             {
-                player.SideDashLeft();
+                player.SideDashLeft(cameraPosition);
                 _lastDashTime = currentTime;
                 return;
             }
@@ -248,9 +248,9 @@ public class InputManager
 
             if (currentTime - _upPressTime >= HoldThreshold && player.IsGrounded)
             {
-                if (currentFlags.HasFlag(InputFlags.Forward)) player.Jump(new Vector3(0, 0, 1.0f));
-                else if (currentFlags.HasFlag(InputFlags.Backward)) player.Jump(new Vector3(0, 0, -1.0f));
-                else player.Jump(Vector3.Zero);
+                if (currentFlags.HasFlag(InputFlags.Forward)) player.Jump(cameraPosition, new Vector3(0, 0, 1.0f));
+                else if (currentFlags.HasFlag(InputFlags.Backward)) player.Jump(cameraPosition, new Vector3(0, 0, -1.0f));
+                else player.Jump(cameraPosition, Vector3.Zero);
             }
             return;
         }
@@ -287,11 +287,11 @@ public class InputManager
         {
             if (currentFlags.HasFlag(InputFlags.Forward))
             {
-                player.MoveForward(0.05f);
+                player.MoveForward(cameraPosition, 0.05f);
             }
             else if (currentFlags.HasFlag(InputFlags.Backward))
             {
-                player.MoveBackward(0.05f);
+                player.MoveBackward(cameraPosition, 0.05f);
             }
             else
             {

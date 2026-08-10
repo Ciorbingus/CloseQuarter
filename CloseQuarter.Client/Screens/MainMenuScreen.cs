@@ -58,10 +58,22 @@ public class MainMenuScreen : Screen
 
         ImGui.Spacing();
         ImGui.Separator();
+
+        
         ImGui.Spacing();
         ImGui.Spacing();
 
         Vector2 buttonSize = new Vector2(ImGui.GetWindowWidth() - 40, 40);
+
+        ImGui.Spacing();
+        ImGui.SetCursorPosX(20);
+
+        if (ImGui.Button("Play Versus", buttonSize))
+        {
+            ScreenManager.ChangeScreen(new VersusSelectionScreen());
+        }
+
+        ImGui.Spacing();
         ImGui.SetCursorPosX(20);
 
         ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.5f, 0.8f, 0.7f));
@@ -71,14 +83,6 @@ public class MainMenuScreen : Screen
             ScreenManager.ChangeScreen(new TestScreen());
         }
         ImGui.PopStyleColor(2);
-
-        ImGui.Spacing();
-        ImGui.SetCursorPosX(20);
-
-        ImGui.BeginDisabled();
-        ImGui.Button("Play", buttonSize);
-        ImGui.EndDisabled();
-
 
         ImGui.Spacing();
         ImGui.SetCursorPosX(20);

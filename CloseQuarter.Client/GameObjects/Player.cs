@@ -77,8 +77,8 @@ public class Player : IDisposable
 
     public Key ForwardKey { get; private set; } = Key.Right;
     public Key BackwardKey { get; private set; } = Key.Left;
-    public Key LeftKey { get; private set; } = Key.Up;
-    public Key RightKey { get; private set; } = Key.Down;
+    public Key LeftKey { get; private set; } = Key.Up;      
+    public Key RightKey { get; private set; } = Key.Down;   
 
     public Key PunchKey { get; set; } = Key.Z;
     public Key RightPunchKey { get; set; } = Key.X;
@@ -121,21 +121,55 @@ public class Player : IDisposable
         FighterModel.LoadTextures(gl, bodyTexturePath, headTexturePath);
     }
 
-    public void UpdateDynamicKeys(float directionFactor)
+    public void ConfigureControls(Key forward, Key backward, Key up, Key down, Key punch, Key rightPunch)
     {
-        LeftKey = Key.Up;
-        RightKey = Key.Down;
+        ForwardKey = forward;
+        BackwardKey = backward;
+        LeftKey = up;
+        RightKey = down;
+        PunchKey = punch;
+        RightPunchKey = rightPunch;
+    }
 
-        if (directionFactor >= 0f)
-        {
-            ForwardKey = Key.Right;
-            BackwardKey = Key.Left;
-        }
-        else
-        {
-            ForwardKey = Key.Left;
-            BackwardKey = Key.Right;
-        }
+    public void ResetToDefaultState(Vector3 startPosition, Vector3 startRotation)
+    {
+        Position = startPosition;
+        Rotation = startRotation;
+
+        VelocityY = 0.0f;
+        IsGrounded = true;
+
+        CurrentState = PlayerState.Idle;
+        PreviousState = PlayerState.Idle;
+        CurrentAttackType = AttackType.None;
+
+        _attackFrameCounter = 0;
+        HasHitCurrentAttack = false;
+        _getUpTimer = 0.0f;
+
+        _knockbackVelocity = Vector3.Zero;
+        ResetDash();
+
+        FighterModel?.ResetPose();
+    }
+
+    public bool ShouldInvertDirection(Vector3 cameraPosition)
+    {
+        Vector3 lineToOpponent = OpponentPosition - Position;
+        lineToOpponent.Y = 0f;
+
+        if (lineToOpponent.LengthSquared() < 0.001f) return false;
+        lineToOpponent = Vector3.Normalize(lineToOpponent);
+
+        Vector3 lineNormal = new Vector3(-lineToOpponent.Z, 0f, lineToOpponent.X);
+
+        Vector3 toCamera = cameraPosition - Position;
+        toCamera.Y = 0f;
+
+        if (toCamera.LengthSquared() < 0.001f) return false;
+        toCamera = Vector3.Normalize(toCamera);
+
+        return Vector3.Dot(lineNormal, toCamera) < 0f;
     }
 
     public bool IsAnimationLocked => IsAttacking || 
@@ -289,10 +323,28 @@ public class Player : IDisposable
         }
     }
 
-    public void MoveForward(float distance)
+    public void MoveForward(Vector3 cameraPosition, float distance)
     {
         if (!IsGrounded || IsAnimationLocked) return;
 
+        if (ShouldInvertDirection(cameraPosition))
+            MoveBackwardInternal(distance);
+        else
+            MoveForwardInternal(distance);
+    }
+
+    public void MoveBackward(Vector3 cameraPosition, float distance)
+    {
+        if (!IsGrounded || IsAnimationLocked) return;
+
+        if (ShouldInvertDirection(cameraPosition))
+            MoveForwardInternal(distance);
+        else
+            MoveBackwardInternal(distance);
+    }
+
+    private void MoveForwardInternal(float distance)
+    {
         SetCrouchState(false);
         CurrentState = IsRunning ? PlayerState.Running : PlayerState.Walking;
 
@@ -302,10 +354,8 @@ public class Player : IDisposable
         Position += forward * currentDistance;
     }
 
-    public void MoveBackward(float distance)
+    private void MoveBackwardInternal(float distance)
     {
-        if (!IsGrounded || IsAnimationLocked) return;
-
         SetCrouchState(false);
         CurrentState = IsRunning ? PlayerState.Running : PlayerState.Walking;
 
@@ -315,17 +365,19 @@ public class Player : IDisposable
         Position += backward * currentDistance;
     }
 
-    public void MoveSidewalk(float speed, bool isLeft)
+    public void MoveSidewalk(Vector3 cameraPosition, float speed, bool isLeft)
     {
         if (IsAnimationLocked) return;
+
+        bool finalLeft = ShouldInvertDirection(cameraPosition) ? !isLeft : isLeft;
 
         SetCrouchState(false);
         LookAt(OpponentPosition);
 
-        CurrentState = isLeft ? PlayerState.SideWalkingLeft : PlayerState.SideWalkingRight;
+        CurrentState = finalLeft ? PlayerState.SideWalkingLeft : PlayerState.SideWalkingRight;
 
         float yawInRadians = Rotation.Y * (MathF.PI / 180.0f);
-        float sideFactor = isLeft ? 1.0f : -1.0f;
+        float sideFactor = finalLeft ? 1.0f : -1.0f;
         Vector3 sideVector = Vector3.Transform(new Vector3(sideFactor, 0, 0), Matrix4x4.CreateRotationY(yawInRadians));
 
         Position += sideVector * speed;
@@ -426,15 +478,47 @@ public class Player : IDisposable
         _sidestepAngleVelocity = 0.0f;
     }
 
-    public void FrontDash(float force = 12.0f) => ApplyDash(new Vector3(0, 0, 1), force, PlayerState.FrontDashing);
-    public void BackDash(float force = 12.0f) => ApplyDash(new Vector3(0, 0, -1), force, PlayerState.BackDashing);
-    public void SideDashLeft(float force = 11.0f) => ApplyDash(new Vector3(1, 0, 0), force, PlayerState.SidestepLeft);
-    public void SideDashRight(float force = 11.0f) => ApplyDash(new Vector3(-1, 0, 0), force, PlayerState.SidestepRight);
+    public void FrontDash(Vector3 cameraPosition, float force = 12.0f)
+    {
+        if (ShouldInvertDirection(cameraPosition))
+            ApplyDash(new Vector3(0, 0, -1), force, PlayerState.BackDashing);
+        else
+            ApplyDash(new Vector3(0, 0, 1), force, PlayerState.FrontDashing);
+    }
 
-    public void Jump(Vector3 direction, float jumpForce = 8.0f)
+    public void BackDash(Vector3 cameraPosition, float force = 12.0f)
+    {
+        if (ShouldInvertDirection(cameraPosition))
+            ApplyDash(new Vector3(0, 0, 1), force, PlayerState.FrontDashing);
+        else
+            ApplyDash(new Vector3(0, 0, -1), force, PlayerState.BackDashing);
+    }
+
+    public void SideDashLeft(Vector3 cameraPosition, float force = 11.0f)
+    {
+        if (ShouldInvertDirection(cameraPosition))
+            ApplyDash(new Vector3(-1, 0, 0), force, PlayerState.SidestepRight);
+        else
+            ApplyDash(new Vector3(1, 0, 0), force, PlayerState.SidestepLeft);
+    }
+
+    public void SideDashRight(Vector3 cameraPosition, float force = 11.0f)
+    {
+        if (ShouldInvertDirection(cameraPosition))
+            ApplyDash(new Vector3(1, 0, 0), force, PlayerState.SidestepLeft);
+        else
+            ApplyDash(new Vector3(-1, 0, 0), force, PlayerState.SidestepRight);
+    }
+
+    public void Jump(Vector3 cameraPosition, Vector3 direction, float jumpForce = 8.0f)
     {
         if (IsGrounded && !IsAttacking && !IsDowned)
         {
+            if (ShouldInvertDirection(cameraPosition))
+            {
+                direction.Z = -direction.Z;
+            }
+
             SetCrouchState(false);
             VelocityY = jumpForce;
             IsGrounded = false;
