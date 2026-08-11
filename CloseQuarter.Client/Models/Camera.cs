@@ -136,4 +136,24 @@ public class Camera
         Target = Vector3.Lerp(Target, midpoint + new Vector3(0, 1.0f, 0), 6.0f * deltaTime);
     }
 
+    public void UpdateVictoryCinematic(Vector3 winnerPosition, float deltaTime)
+    {
+        Vector3 targetFocus = winnerPosition + new Vector3(0.0f, 1.2f, 0.0f);
+        Target = Vector3.Lerp(Target, targetFocus, 5.0f * deltaTime);
+
+        Yaw += 15.0f * deltaTime;
+        float radians = Yaw * (MathF.PI / 180.0f);
+
+        float orbitRadius = 4.5f;
+        float cameraHeight = 2.2f;
+
+        Vector3 desiredPosition = new Vector3(
+            Target.X + orbitRadius * MathF.Cos(radians),
+            Target.Y + cameraHeight,
+            Target.Z + orbitRadius * MathF.Sin(radians)
+        );
+
+        Position = Vector3.Lerp(Position, desiredPosition, 4.0f * deltaTime);
+    }
+
 }

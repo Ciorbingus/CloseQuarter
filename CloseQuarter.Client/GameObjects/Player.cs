@@ -30,7 +30,8 @@ public enum PlayerState
     DownedFaceDown,
     GettingUp,
     Hit,
-    KnockedOut
+    KnockedOut,
+    Victory
 }
 
 public enum AttackType
@@ -77,8 +78,8 @@ public class Player : IDisposable
 
     public Key ForwardKey { get; private set; } = Key.Right;
     public Key BackwardKey { get; private set; } = Key.Left;
-    public Key LeftKey { get; private set; } = Key.Up;      
-    public Key RightKey { get; private set; } = Key.Down;   
+    public Key LeftKey { get; private set; } = Key.Up;
+    public Key RightKey { get; private set; } = Key.Down;
 
     public Key PunchKey { get; set; } = Key.Z;
     public Key RightPunchKey { get; set; } = Key.X;
@@ -172,12 +173,13 @@ public class Player : IDisposable
         return Vector3.Dot(lineNormal, toCamera) < 0f;
     }
 
-    public bool IsAnimationLocked => IsAttacking || 
-                                     CurrentState == PlayerState.Hit || 
-                                     CurrentState == PlayerState.DownedFaceUp || 
-                                     CurrentState == PlayerState.DownedFaceDown || 
-                                     CurrentState == PlayerState.GettingUp || 
-                                     CurrentState == PlayerState.KnockedOut;
+    public bool IsAnimationLocked => IsAttacking ||
+                                     CurrentState == PlayerState.Hit ||
+                                     CurrentState == PlayerState.DownedFaceUp ||
+                                     CurrentState == PlayerState.DownedFaceDown ||
+                                     CurrentState == PlayerState.GettingUp ||
+                                     CurrentState == PlayerState.KnockedOut ||
+                                     CurrentState == PlayerState.Victory;
 
     public bool IsDowned => CurrentState == PlayerState.DownedFaceUp || CurrentState == PlayerState.DownedFaceDown;
 
@@ -228,16 +230,18 @@ public class Player : IDisposable
         float rotY = Rotation.Y * (MathF.PI / 180.0f);
         float rotZ = Rotation.Z * (MathF.PI / 180.0f);
 
+        float heightGroundOffset = 0.25f;
+
         float yOffset = CurrentState == PlayerState.Crouching ? -0.4f : 0.0f;
-        if (CurrentState == PlayerState.Downed || 
-            CurrentState == PlayerState.DownedFaceUp || 
-            CurrentState == PlayerState.DownedFaceDown || 
+        if (CurrentState == PlayerState.Downed ||
+            CurrentState == PlayerState.DownedFaceUp ||
+            CurrentState == PlayerState.DownedFaceDown ||
             CurrentState == PlayerState.KnockedOut)
         {
             yOffset = -0.85f;
         }
 
-        Vector3 visualPosition = Position + new Vector3(0.0f, yOffset, 0.0f);
+        Vector3 visualPosition = Position + new Vector3(0.0f, yOffset + heightGroundOffset, 0.0f);
 
         return Matrix4x4.CreateScale(1.0f) *
                Matrix4x4.CreateRotationX(rotX) *
@@ -600,6 +604,13 @@ public class Player : IDisposable
 
     public void UpdateAnimations(float deltaTime)
     {
+        if (CurrentState == PlayerState.Victory)
+        {
+            _idleTimeTimer += deltaTime;
+            FighterModel.AnimateVictory(_idleTimeTimer);
+            return;
+        }
+
         if (IsAttacking)
         {
             UpdateAttack();

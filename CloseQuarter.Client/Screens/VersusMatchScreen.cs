@@ -8,6 +8,7 @@ using System.Numerics;
 using CloseQuarter.Client.Managers;
 using CloseQuarter.Client.Graphics;
 using CloseQuarter.Client.Models;
+using CloseQuarter.Client.Maps;
 
 namespace CloseQuarter.Client.Screens;
 
@@ -116,14 +117,26 @@ public class VersusMatchScreen : Screen
             _bgmStarted = true;
         }
 
-        _combat.UpdateMatch(dt);
+        if (_player1 == null || _player2 == null) return;
+
+        _combat.UpdateMatch(dt, _player1, _player2);
 
         if (_combat.IsGameOver)
         {
             AudioManager.StopBGM();
         }
 
-        if (_combat.CurrentState == MatchState.Running || _combat.CurrentState == MatchState.Starting)
+        if (_combat.CurrentState == MatchState.P1Wins || _combat.CurrentState == MatchState.P2Wins)
+        {
+            UpdateVictoryCamera(dt);
+
+            if (_combat.IsMatchTransitionReady)
+            {
+                ScreenManager.ChangeScreen(new VersusSelectionScreen());
+                return;
+            }
+        }
+        else if (_combat.CurrentState == MatchState.Running || _combat.CurrentState == MatchState.Starting || _combat.CurrentState == MatchState.RoundOver)
         {
             _totalGameTime += dt;
 
@@ -147,8 +160,28 @@ public class VersusMatchScreen : Screen
 
             if (_camera != null && _player1 != null && _player2 != null)
             {
-                _camera.UpdateDynamic(_player1.Position, _player2.Position, dt);
+                if (_combat.CurrentState == MatchState.RoundOver)
+                {
+                    UpdateVictoryCamera(dt);
+                }
+                else
+                {
+                    _camera.UpdateDynamic(_player1.Position, _player2.Position, dt);
+                }
             }
+        }
+    }
+
+    private void UpdateVictoryCamera(float dt)
+    {
+        if (_camera == null) return;
+
+        Player? winner = _player1?.CurrentState == PlayerState.Victory ? _player1 :
+                        (_player2?.CurrentState == PlayerState.Victory ? _player2 : null);
+
+        if (winner != null)
+        {
+            _camera.UpdateVictoryCinematic(winner.Position, dt);
         }
     }
 
@@ -176,9 +209,10 @@ public class VersusMatchScreen : Screen
             case MatchState.Paused:
                 DrawPauseMenuUI();
                 break;
+            case MatchState.RoundOver:
             case MatchState.P1Wins:
             case MatchState.P2Wins:
-                DrawWinnerUI();
+                DrawVictoryOverlay();
                 break;
         }
     }
@@ -202,13 +236,18 @@ public class VersusMatchScreen : Screen
         float windowWidth = Window.Size.X;
 
         ImGui.SetNextWindowPos(new Vector2(20, 20));
-        ImGui.SetNextWindowSize(new Vector2(400, 70));
+        ImGui.SetNextWindowSize(new Vector2(400, 90));
         ImGui.Begin("P1_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
         string p1Name = _player1?.DisplayName.ToUpper() ?? "PLAYER 1";
         ImGui.TextColored(new Vector4(0.2f, 0.8f, 1.0f, 1.0f), p1Name);
         PushHealthBarStyle(_combat.P1Health);
         ImGui.ProgressBar(_combat.P1Health / CombatManager.MaxHealth, new Vector2(350, 22), $"{_combat.P1Health:F0} HP");
         ImGui.PopStyleColor();
+
+        string p1Rounds = "";
+        for (int i = 0; i < CombatManager.RoundsToWin; i++)
+            p1Rounds += (i < _combat.P1RoundsWon) ? " [X] " : " [ ] ";
+        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), $"Rounds: {p1Rounds}");
         ImGui.End();
 
         ImGui.SetNextWindowPos(new Vector2((windowWidth / 2f) - 40, 15));
@@ -221,7 +260,7 @@ public class VersusMatchScreen : Screen
         ImGui.End();
 
         ImGui.SetNextWindowPos(new Vector2(windowWidth - 420, 20));
-        ImGui.SetNextWindowSize(new Vector2(400, 70));
+        ImGui.SetNextWindowSize(new Vector2(400, 90));
         ImGui.Begin("P2_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
         string p2Name = _player2?.DisplayName.ToUpper() ?? "PLAYER 2";
         float posX = ImGui.GetWindowWidth() - ImGui.CalcTextSize(p2Name).X - 50;
@@ -231,6 +270,12 @@ public class VersusMatchScreen : Screen
         ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 350 - 50);
         ImGui.ProgressBar(_combat.P2Health / CombatManager.MaxHealth, new Vector2(350, 22), $"{_combat.P2Health:F0} HP");
         ImGui.PopStyleColor();
+
+        string p2Rounds = "";
+        for (int i = 0; i < CombatManager.RoundsToWin; i++)
+            p2Rounds += (i < _combat.P2RoundsWon) ? " [X] " : " [ ] ";
+        ImGui.SetCursorPosX(ImGui.GetWindowWidth() - ImGui.CalcTextSize($"Rounds: {p2Rounds}").X - 50);
+        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), $"Rounds: {p2Rounds}");
         ImGui.End();
     }
 
@@ -265,10 +310,36 @@ public class VersusMatchScreen : Screen
         Vector4 color;
 
         float timer = _combat.CountdownTimer;
-        if (timer > 3.0f) { text = "3"; color = new Vector4(1, 0.2f, 0.2f, 1); }
-        else if (timer > 2.0f) { text = "2"; color = new Vector4(1, 0.8f, 0.2f, 1); }
-        else if (timer > 1.0f) { text = "1"; color = new Vector4(0.2f, 1f, 0.2f, 1); }
+        if (timer > 3.0f) { text = $"ROUND {_combat.CurrentRound}"; color = new Vector4(1, 0.8f, 0.2f, 1); }
+        else if (timer > 2.0f) { text = "READY"; color = new Vector4(1, 0.5f, 0.2f, 1); }
+        else if (timer > 1.0f) { text = "SET"; color = new Vector4(0.2f, 1f, 0.2f, 1); }
         else { text = "FIGHT!"; color = new Vector4(0.2f, 0.8f, 1f, 1); }
+
+        float textX = (windowWidth - ImGui.CalcTextSize(text).X) / 2f;
+        ImGui.SetCursorPosX(textX);
+        ImGui.TextColored(color, text);
+
+        ImGui.End();
+    }
+
+    private void DrawVictoryOverlay()
+    {
+        float windowWidth = Window.Size.X;
+        float windowHeight = Window.Size.Y;
+
+        ImGui.SetNextWindowPos(new Vector2(0, windowHeight * 0.40f));
+        ImGui.SetNextWindowSize(new Vector2(windowWidth, 180));
+        ImGui.Begin("VictoryOverlay", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
+
+        ImGui.SetWindowFontScale(3.5f);
+
+        string winnerName = _player1?.CurrentState == PlayerState.Victory ? _player1.DisplayName.ToUpper() :
+                           (_player2?.CurrentState == PlayerState.Victory ? _player2.DisplayName.ToUpper() : "PLAYER");
+
+        bool isFinalMatch = _combat.CurrentState == MatchState.P1Wins || _combat.CurrentState == MatchState.P2Wins;
+        string text = isFinalMatch ? $"{winnerName} WINS MATCH!" : $"{winnerName} WINS ROUND!";
+
+        Vector4 color = _player1?.CurrentState == PlayerState.Victory ? new Vector4(0.2f, 0.8f, 1.0f, 1.0f) : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);
 
         float textX = (windowWidth - ImGui.CalcTextSize(text).X) / 2f;
         ImGui.SetCursorPosX(textX);
@@ -317,55 +388,10 @@ public class VersusMatchScreen : Screen
         ImGui.End();
     }
 
-    private void DrawWinnerUI()
-    {
-        float windowWidth = Window.Size.X;
-        float windowHeight = Window.Size.Y;
-
-        Vector2 gameOverSize = new Vector2(400, 220);
-        Vector2 gameOverPos = new Vector2((windowWidth - gameOverSize.X) / 2f, (windowHeight - gameOverSize.Y) / 2f);
-
-        ImGui.SetNextWindowPos(gameOverPos);
-        ImGui.SetNextWindowSize(gameOverSize);
-
-        ImGui.Begin("WinnerWindow", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize);
-
-        ImGui.SetWindowFontScale(2.0f);
-
-        string winnerText = _combat.CurrentState == MatchState.P1Wins 
-            ? $"{_player1?.DisplayName.ToUpper() ?? "P1"} WINS!" 
-            : $"{_player2?.DisplayName.ToUpper() ?? "P2"} WINS!";
-
-        Vector4 winnerColor = _combat.CurrentState == MatchState.P1Wins 
-            ? new Vector4(0.2f, 0.8f, 1.0f, 1.0f) 
-            : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);
-
-        float titleX = (ImGui.GetWindowWidth() - ImGui.CalcTextSize(winnerText).X) / 2f;
-        ImGui.SetCursorPosX(titleX);
-        ImGui.TextColored(winnerColor, winnerText);
-        ImGui.SetWindowFontScale(1.0f);
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        if (ImGui.Button("Rematch", new Vector2(380, 40)))
-        {
-            ResetGame();
-        }
-
-        if (ImGui.Button("Return to Character Select", new Vector2(380, 40)))
-        {
-            ScreenManager.ChangeScreen(new VersusSelectionScreen());
-        }
-
-        ImGui.End();
-    }
-
     private void ResetGame()
     {
         _totalGameTime = 0f;
-        _combat.ResetMatch();
+        _combat.ResetFullMatch();
 
         if (_bgmSoundOn)
         {

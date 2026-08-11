@@ -133,14 +133,16 @@ public class TestScreen : Screen
             _bgmStarted = true;
         }
 
-        _combat.UpdateMatch(dt);
+        if (_player1 == null || _player2 == null) return;
+
+        _combat.UpdateMatch(dt, _player1, _player2);
 
         if (_combat.IsGameOver)
         {
             AudioManager.StopBGM();
         }
 
-        if (_combat.CurrentState == MatchState.Running || _combat.CurrentState == MatchState.Starting)
+        if (_combat.CurrentState == MatchState.Running || _combat.CurrentState == MatchState.Starting || _combat.CurrentState == MatchState.RoundOver)
         {
             _totalGameTime += dt;
 
@@ -257,6 +259,7 @@ public class TestScreen : Screen
         ImGui.Begin("Debug Engine");
         ImGui.Text($"FPS: {1.0 / ImGui.GetIO().DeltaTime:F0}");
         ImGui.Text($"Match State: {_combat.CurrentState}");
+        ImGui.Text($"Current Round: {_combat.CurrentRound}");
         ImGui.Separator();
 
         ImGui.Text($"Camera Position: X: {_camera?.Position.X:F2}, Y: {_camera?.Position.Y:F2}, Z: {_camera?.Position.Z:F2}");
@@ -266,14 +269,14 @@ public class TestScreen : Screen
         if (ImGui.SliderFloat("P1 Health", ref p1Hp, 0f, CombatManager.MaxHealth)) _combat.P1Health = p1Hp;
         if (ImGui.SliderFloat("P2 Health", ref p2Hp, 0f, CombatManager.MaxHealth)) _combat.P2Health = p2Hp;
 
-        if (ImGui.Button("Reset Health")) _combat.ResetMatch();
+        if (ImGui.Button("Reset Health")) _combat.ResetRound();
         if (ImGui.Button("Reset Timer")) _combat.MatchTimer = 90f;
         if (ImGui.Button("Play SFX")) AudioManager.PlaySFX(_soundEffect, 0.3f);
 
         if (ImGui.Button("Toggle Camera Mode")) toggleCamera = !toggleCamera;
         ImGui.Text($"Camera Mode: {(toggleCamera ? "Automatic" : "Manual")}");
 
-        if (ImGui.Button("Reset Game")) ResetGame();
+        if (ImGui.Button("Reset Full Game")) ResetGame();
 
         if (ImGui.Button("Toggle BGM"))
         {
@@ -306,13 +309,18 @@ public class TestScreen : Screen
         float windowWidth = Window.Size.X;
 
         ImGui.SetNextWindowPos(new Vector2(20, 20));
-        ImGui.SetNextWindowSize(new Vector2(400, 70));
+        ImGui.SetNextWindowSize(new Vector2(400, 90));
         ImGui.Begin("P1_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
         string p1Name = _player1?.DisplayName.ToUpper() ?? "PLAYER 1";
         ImGui.TextColored(new Vector4(0.2f, 0.8f, 1.0f, 1.0f), p1Name);
         PushHealthBarStyle(_combat.P1Health);
         ImGui.ProgressBar(_combat.P1Health / CombatManager.MaxHealth, new Vector2(350, 22), $"{_combat.P1Health:F0} HP");
         ImGui.PopStyleColor();
+
+        string p1Rounds = "";
+        for (int i = 0; i < CombatManager.RoundsToWin; i++)
+            p1Rounds += (i < _combat.P1RoundsWon) ? " [X] " : " [ ] ";
+        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), $"Rounds: {p1Rounds}");
         ImGui.End();
 
         ImGui.SetNextWindowPos(new Vector2((windowWidth / 2f) - 40, 15));
@@ -325,7 +333,7 @@ public class TestScreen : Screen
         ImGui.End();
 
         ImGui.SetNextWindowPos(new Vector2(windowWidth - 420, 20));
-        ImGui.SetNextWindowSize(new Vector2(400, 70));
+        ImGui.SetNextWindowSize(new Vector2(400, 90));
         ImGui.Begin("P2_HUD", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
         string p2Label = _player2?.DisplayName.ToUpper() ?? "PLAYER 2";
         float posX = ImGui.GetWindowWidth() - ImGui.CalcTextSize(p2Label).X - 50;
@@ -336,7 +344,13 @@ public class TestScreen : Screen
         ImGui.ProgressBar(_combat.P2Health / CombatManager.MaxHealth, new Vector2(350, 22), $"{_combat.P2Health:F0} HP");
         ImGui.PopStyleColor();
 
-        _p1Input.DrawInputHistoryUI("P1 Inputs", new Vector2(20, 100));
+        string p2Rounds = "";
+        for (int i = 0; i < CombatManager.RoundsToWin; i++)
+            p2Rounds += (i < _combat.P2RoundsWon) ? " [X] " : " [ ] ";
+        ImGui.SetCursorPosX(ImGui.GetWindowWidth() - ImGui.CalcTextSize($"Rounds: {p2Rounds}").X - 50);
+        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), $"Rounds: {p2Rounds}");
+
+        _p1Input.DrawInputHistoryUI("P1 Inputs", new Vector2(20, 120));
         ImGui.End();
     }
 
@@ -371,9 +385,9 @@ public class TestScreen : Screen
         Vector4 color;
 
         float timer = _combat.CountdownTimer;
-        if (timer > 3.0f) { text = "3"; color = new Vector4(1, 0.2f, 0.2f, 1); }
-        else if (timer > 2.0f) { text = "2"; color = new Vector4(1, 0.8f, 0.2f, 1); }
-        else if (timer > 1.0f) { text = "1"; color = new Vector4(0.2f, 1f, 0.2f, 1); }
+        if (timer > 3.0f) { text = $"ROUND {_combat.CurrentRound}"; color = new Vector4(1, 0.8f, 0.2f, 1); }
+        else if (timer > 2.0f) { text = "READY"; color = new Vector4(1, 0.5f, 0.2f, 1); }
+        else if (timer > 1.0f) { text = "SET"; color = new Vector4(0.2f, 1f, 0.2f, 1); }
         else { text = "FIGHT!"; color = new Vector4(0.2f, 0.8f, 1f, 1); }
 
         float textX = (windowWidth - ImGui.CalcTextSize(text).X) / 2f;
@@ -439,8 +453,8 @@ public class TestScreen : Screen
         ImGui.SetWindowFontScale(2.0f);
 
         string winnerText = _combat.CurrentState == MatchState.P1Wins 
-            ? $"{_player1?.DisplayName.ToUpper() ?? "P1"} WINS!" 
-            : $"{_player2?.DisplayName.ToUpper() ?? "P2"} WINS!";
+            ? $"{_player1?.DisplayName.ToUpper() ?? "P1"} WINS MATCH!" 
+            : $"{_player2?.DisplayName.ToUpper() ?? "P2"} WINS MATCH!";
 
         Vector4 winnerColor = _combat.CurrentState == MatchState.P1Wins 
             ? new Vector4(0.2f, 0.8f, 1.0f, 1.0f) 
@@ -471,7 +485,7 @@ public class TestScreen : Screen
     private void ResetGame()
     {
         _totalGameTime = 0f;
-        _combat.ResetMatch();
+        _combat.ResetFullMatch();
 
         if (_bgmSoundOn) AudioManager.PlayBGM(_bgmFilePath, 0.3f);
 

@@ -7,55 +7,103 @@ public enum MatchState
     Starting,
     Running,
     Paused,
+    RoundOver,
     P1Wins,
-    P2Wins,
-    DoubleKO
+    P2Wins
 }
 
 public class CombatManager
 {
     public const float MaxHealth = 100f;
+    public const int RoundsToWin = 2;
 
     public float P1Health { get; set; } = MaxHealth;
     public float P2Health { get; set; } = MaxHealth;
     public float MatchTimer { get; set; } = 90f;
 
+    public int P1RoundsWon { get; private set; } = 0;
+    public int P2RoundsWon { get; private set; } = 0;
+    public int CurrentRound { get; private set; } = 1;
+
     public MatchState CurrentState { get; private set; } = MatchState.Starting;
     public float CountdownTimer { get; private set; } = 4.0f;
+
+    private float _roundOverTimer = 0.0f;
+    private const float RoundOverDuration = 3.5f;
 
     public bool IsGameOver => CurrentState == MatchState.P1Wins || CurrentState == MatchState.P2Wins;
 
     private readonly string _soundEffectPath = "CloseQuarter.Client/Audio/boom.wav";
 
-    public void ResetMatch()
+
+    public bool IsMatchTransitionReady { get; private set; } = false;
+
+
+    public void ResetFullMatch()
+    {
+        P1RoundsWon = 0;
+        P2RoundsWon = 0;
+        CurrentRound = 1;
+        ResetRound();
+    }
+
+    public void ResetRound()
     {
         P1Health = MaxHealth;
         P2Health = MaxHealth;
         MatchTimer = 90f;
         CountdownTimer = 4.0f;
+        _roundOverTimer = 0.0f;
         CurrentState = MatchState.Starting;
     }
 
     public void TogglePause()
     {
-        if (CurrentState == MatchState.Running)
-        {
-            CurrentState = MatchState.Paused;
-        }
-        else if (CurrentState == MatchState.Paused)
-        {
-            CurrentState = MatchState.Running;
-        }
+        if (CurrentState == MatchState.Running) CurrentState = MatchState.Paused;
+        else if (CurrentState == MatchState.Paused) CurrentState = MatchState.Running;
     }
 
-    public void UpdateMatch(float deltaTime)
+    public void UpdateMatch(float deltaTime, Player p1, Player p2)
     {
         if (CurrentState == MatchState.Starting)
         {
             CountdownTimer -= deltaTime;
-            if (CountdownTimer <= 0f)
+            if (CountdownTimer <= 0f) CurrentState = MatchState.Running;
+            return;
+        }
+
+        if (CurrentState == MatchState.P1Wins || CurrentState == MatchState.P2Wins)
+        {
+            _roundOverTimer += deltaTime;
+            if (_roundOverTimer >= RoundOverDuration)
             {
-                CurrentState = MatchState.Running;
+                IsMatchTransitionReady = true;
+            }
+            return;
+        }
+
+        if (CurrentState == MatchState.RoundOver)
+        {
+            _roundOverTimer += deltaTime;
+            if (_roundOverTimer >= RoundOverDuration)
+            {
+                if (P1RoundsWon >= RoundsToWin)
+                {
+                    CurrentState = MatchState.P1Wins;
+                    _roundOverTimer = 0.0f;
+                }
+                else if (P2RoundsWon >= RoundsToWin)
+                {
+                    CurrentState = MatchState.P2Wins;
+                    _roundOverTimer = 0.0f;
+                }
+                else
+                {
+                    CurrentRound++;
+                    ResetRound();
+                    p1?.ResetToDefaultState(new System.Numerics.Vector3(-2.5f, 0, 0), new System.Numerics.Vector3(0, 90, 0));
+                    p2?.ResetToDefaultState(new System.Numerics.Vector3(2.5f, 0, 0), new System.Numerics.Vector3(0, -90, 0));
+                }
             }
             return;
         }
@@ -66,34 +114,45 @@ public class CombatManager
         if (MatchTimer <= 0f)
         {
             MatchTimer = 0f;
-            DetermineWinnerByTime();
+            DetermineRoundWinnerByTime(p1, p2);
             return;
         }
 
         if (P2Health <= 0f)
         {
             P2Health = 0f;
-            CurrentState = MatchState.P1Wins;
+            AwardRoundWin(winner: p1, loser: p2, isP1: true);
         }
         else if (P1Health <= 0f)
         {
             P1Health = 0f;
-            CurrentState = MatchState.P2Wins; 
+            AwardRoundWin(winner: p2, loser: p1, isP1: false);
         }
     }
 
-    private void DetermineWinnerByTime()
+    private void AwardRoundWin(Player winner, Player loser, bool isP1)
     {
-        if (P1Health > P2Health) CurrentState = MatchState.P1Wins;
-        else if (P2Health > P1Health) CurrentState = MatchState.P2Wins;
-        else CurrentState = MatchState.P1Wins;
+        if (isP1) P1RoundsWon++;
+        else P2RoundsWon++;
+
+        CurrentState = MatchState.RoundOver;
+        _roundOverTimer = 0.0f;
+
+        if (winner != null) winner.CurrentState = PlayerState.Victory;
+        if (loser != null) loser.CurrentState = PlayerState.DownedFaceUp;
+    }
+
+    private void DetermineRoundWinnerByTime(Player p1, Player p2)
+    {
+        if (P1Health >= P2Health) AwardRoundWin(p1, p2, isP1: true);
+        else AwardRoundWin(p2, p1, isP1: false);
     }
 
     public void ProcessFixedUpdate(Player p1, Player p2, float fixedDeltaTime)
     {
         if (p1 == null || p2 == null) return;
 
-        if (CurrentState == MatchState.Starting)
+        if (CurrentState == MatchState.Starting || CurrentState == MatchState.RoundOver)
         {
             UpdatePlayerPhysicsAndAnimations(p1, fixedDeltaTime);
             UpdatePlayerPhysicsAndAnimations(p2, fixedDeltaTime);
@@ -137,14 +196,8 @@ public class CombatManager
             {
                 float damage = attacker.GetAttackDamage();
 
-                if (isP1Attacker)
-                {
-                    P2Health = MathF.Max(0f, P2Health - damage);
-                }
-                else
-                {
-                    P1Health = MathF.Max(0f, P1Health - damage);
-                }
+                if (isP1Attacker) P2Health = MathF.Max(0f, P2Health - damage);
+                else P1Health = MathF.Max(0f, P1Health - damage);
 
                 attacker.HasHitCurrentAttack = true;
 
@@ -161,4 +214,7 @@ public class CombatManager
             }
         }
     }
+
+
+
 }
