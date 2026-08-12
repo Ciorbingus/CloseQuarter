@@ -337,7 +337,7 @@ public class VersusMatchScreen : Screen
                            (_player2?.CurrentState == PlayerState.Victory ? _player2.DisplayName.ToUpper() : "PLAYER");
 
         bool isFinalMatch = _combat.CurrentState == MatchState.P1Wins || _combat.CurrentState == MatchState.P2Wins;
-        string text = isFinalMatch ? $"{winnerName} WINS MATCH!" : $"{winnerName} WINS ROUND!";
+        string text = isFinalMatch ? $"{winnerName} WINS THE MATCH!" : $"{winnerName} WINS THE ROUND!";
 
         Vector4 color = _player1?.CurrentState == PlayerState.Victory ? new Vector4(0.2f, 0.8f, 1.0f, 1.0f) : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);
 

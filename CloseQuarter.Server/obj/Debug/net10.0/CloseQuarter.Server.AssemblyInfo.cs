@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CloseQuarter.Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e25ab5f81aeda4194c63612ef4cc03e4980872a8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+263611beae781ef81fe7a7da8f8efdfa9be0da1c")]
 [assembly: System.Reflection.AssemblyProductAttribute("CloseQuarter.Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CloseQuarter.Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
