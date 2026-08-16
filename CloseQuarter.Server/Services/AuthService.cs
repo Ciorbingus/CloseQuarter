@@ -1,5 +1,6 @@
 using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
+
 using CloseQuarter.Server.Data;
 using CloseQuarter.Server.Models;
 using CloseQuarter.Shared.DTOs;

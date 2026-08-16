@@ -1,5 +1,5 @@
 ﻿using CloseQuarter.Server.Data;
-using CloseQuarter.Server.Services;
+using CloseQuarter.Server.Networking;
 
 Console.WriteLine("CloseQuarter Game Server Starting...");
 
@@ -9,4 +9,5 @@ using (var db = new AppDbContext())
     Console.WriteLine("[DB] Database ready!");
 }
 
-Console.WriteLine("Running Server...");
+var server = new NetworkServer(port: 5000);
+server.Start();
